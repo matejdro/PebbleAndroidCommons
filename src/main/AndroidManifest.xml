@@ -1,0 +1,18 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.matejdro.pebblecommons">
+
+    <application>
+        <receiver android:name="com.matejdro.pebblecommons.pebble.DataReceiver" >
+            <intent-filter>
+                <action android:name="com.getpebble.action.app.RECEIVE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.getpebble.action.app.RECEIVE_NACK" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.getpebble.action.app.RECEIVE_ACK" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>
