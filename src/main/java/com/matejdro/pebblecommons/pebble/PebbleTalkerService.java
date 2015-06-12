@@ -13,7 +13,7 @@ import com.getpebble.android.kit.util.PebbleDictionary;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import org.json.JSONException;
-import com.matejdro.pebblecommons.log.Timber;
+import timber.log.Timber;
 
 public abstract class PebbleTalkerService extends Service
 {
@@ -23,7 +23,7 @@ public abstract class PebbleTalkerService extends Service
 
     private SharedPreferences settings;
 
-    private PebbleDeveloperConnection devConn;
+    protected PebbleDeveloperConnection devConn;
 
     private PebbleCommunication pebbleCommunication;
 
@@ -85,6 +85,7 @@ public abstract class PebbleTalkerService extends Service
            else
            {
                CommModule receivingModule = registeredIntents.get(intent.getAction());
+               System.out.println("receivingmodule " + receivingModule);
                if (receivingModule != null)
                    receivingModule.gotIntent(intent);
            }
@@ -93,7 +94,7 @@ public abstract class PebbleTalkerService extends Service
         return super.onStartCommand(intent, flags, startId);
     }
 
-    public abstract void registerModules();
+    protected abstract void registerModules();
 
     protected void addModule(CommModule module, int id)
     {
@@ -130,14 +131,14 @@ public abstract class PebbleTalkerService extends Service
         handler.post(runnable);
     }
 
-    private void initDeveloperConnection()
+    protected void initDeveloperConnection()
     {
         try
         {
             devConn = new PebbleDeveloperConnection();
-           // devConn.connectBlocking();
-       /* } catch (InterruptedException e)
-        {*/
+            devConn.connectBlocking();
+        } catch (InterruptedException e)
+        {
         } catch (URISyntaxException e)
         {
         }

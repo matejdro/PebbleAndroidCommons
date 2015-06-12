@@ -1,133 +1,466 @@
 package com.matejdro.pebblecommons.pebble;
 
+import android.content.Context;
 import android.os.Handler;
-import android.os.HandlerThread;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
+import android.os.Looper;
+import android.view.TextureView;
+import com.getpebble.android.kit.Constants;
+import com.matejdro.pebblecommons.util.TextUtil;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import timber.log.Timber;
 
-import com.matejdro.pebblecommons.log.Timber;
+public class PebbleDeveloperConnection extends WebSocketClient
+{
+	private List<DeveloperConnectionResult> waitingTasks = Collections.synchronizedList(new LinkedList<DeveloperConnectionResult>());
 
-public class PebbleDeveloperConnection extends WebSocketClient {
-	private UUID receivedUUID;
-	private HandlerThread timeoutThread;
-	private Handler timeoutThreadHandler;
-	public CountDownLatch uuidWaitLatch;
-	
-	
+
 	public PebbleDeveloperConnection() throws URISyntaxException
-    {
+	{
 		super(new URI("ws://127.0.0.1:9000"));
 	}
-	
+
 	@Override
-	public void onOpen(ServerHandshake handshakedata) {
+	public void onOpen(ServerHandshake handshakedata)
+	{
 	}
 
 	@Override
-	public void onMessage(String message) {
-	}
-
-	final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
-	public static String bytesToHex(byte[] bytes) {
-		char[] hexChars = new char[bytes.length * 2];
-		for ( int j = 0; j < bytes.length; j++ ) {
-			int v = bytes[j] & 0xFF;
-			hexChars[j * 2] = hexArray[v >>> 4];
-			hexChars[j * 2 + 1] = hexArray[v & 0x0F];
-		}
-		return new String(hexChars);
+	public void onMessage(String message)
+	{
 	}
 
 	@Override
-	public void onMessage(ByteBuffer bytes) {
-		/*if (timeoutThread == null || !timeoutThread.isAlive())
-			return;
-*/
-
-		Timber.d("DevConn " + bytesToHex(bytes.array()));
-
+	public void onMessage(ByteBuffer bytes)
+	{
 		int source = bytes.get();
-		if (source != 0)
-			return;
-
-
-		short size = bytes.getShort();
-		short endpoint = bytes.getShort();
-		
-		if (size != 17 || endpoint != 6000)
-			return;
-		
-		int cmd = bytes.get();
-		if (cmd != 7)
-			return;
-			
-		receivedUUID = new UUID(bytes.getLong(), bytes.getLong());
-		
-		//returnId();
+		if (source == 0) //Message from watch
+		{
+			short size = bytes.getShort();
+			short endpoint = bytes.getShort();
+			if (endpoint == 6000) //APP_INSTALL_MANAGER
+			{
+				int cmd = bytes.get();
+				if (cmd == 7) //UUID of the active app
+				{
+					UUID receivedUUID = new UUID(bytes.getLong(), bytes.getLong());
+					completeWaitingTasks(DeveloperConnectionTaskType.GET_CURRENT_RUNNING_APP, receivedUUID);
+				}
+				else if (cmd == 1) //List of all installed apps
+				{
+					List<PebbleApp> installedApps = PebbleApp.getFromByteBuffer(bytes);
+					completeWaitingTasks(DeveloperConnectionTaskType.GET_ALL_INSTALLED_APP_META, installedApps);
+				}
+				else if (cmd == 5) //List of UUIDs of all installed apps
+				{
+					List<UUID> installedUUIDs = PebbleApp.getUUIDListFromByteBuffer(bytes);
+					completeWaitingTasks(DeveloperConnectionTaskType.GET_ALL_INSTALLED_APP_UUID, installedUUIDs);
+				}
+			}
+		}
 	}
 
 	@Override
-	public void onClose(int code, String reason, boolean remote) {
+	public void onClose(int code, String reason, boolean remote)
+	{
 	}
 
 	@Override
-	public void onError(Exception ex) {
+	public void onError(Exception ex)
+	{
 		ex.printStackTrace();
 	}
-	
-	private void returnId()
-	{
-		timeoutThreadHandler.removeCallbacksAndMessages(null);
-		timeoutThread.quit();
-		uuidWaitLatch.countDown();
-	}
 
-	public synchronized UUID getCurrentRunningApp()
+	public UUID getCurrentRunningApp()
 	{
 		if (!isOpen())
 			return null;
-		
+
+		DeveloperConnectionResult<UUID> result = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_CURRENT_RUNNING_APP);
+		waitingTasks.add(result);
+
+		//0x01 = CMD (PHONE_TO_WATCH)
+		//0x00 0x01 = Data length (short) - 1
+		//0x17 0x70 = Endpoint (6000 - APP_MANAGER)
+		//0x07 = Data (7)
+		byte[] requestCurrentApp = new byte[]{0x1, 0x0, 0x1, 0x17, 0x70, 0x7};
+		send(requestCurrentApp);
+
+		return result.get(5, TimeUnit.SECONDS);
+	}
+
+	public List<PebbleApp> getInstalledPebbleApps()
+	{
+		if (!isOpen())
+			return null;
+
+		DeveloperConnectionResult<List<PebbleApp>> resultAppMeta = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_ALL_INSTALLED_APP_META);
+		DeveloperConnectionResult<List<UUID>> resultAppUUID = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_ALL_INSTALLED_APP_UUID);
+
+		waitingTasks.add(resultAppMeta);
+		waitingTasks.add(resultAppUUID);
+
+
+		//0x01 = CMD (PHONE_TO_WATCH)
+		//0x00 0x01 = Data length (short) - 1
+		//0x17 0x70 = Endpoint (6000 - APP_MANAGER)
+		//0x01 = Data (1 = get apps meta, 5 = get apps UUID)
+		byte[] request = new byte[]{0x1, 0x0, 0x1, 0x17, 0x70, 0x1};
+		send(request);
+		request = new byte[]{0x1, 0x0, 0x1, 0x17, 0x70, 0x5};
+		send(request);
+
+
+		List<PebbleApp> appList = resultAppMeta.get(5, TimeUnit.SECONDS);
+		if (appList == null)
+			return null;
+
+		List<UUID> uuidList = resultAppUUID.get(5, TimeUnit.SECONDS);
+		if (uuidList == null)
+			return null;
+
+		for (int i = 0; i < appList.size(); i++)
+		{
+			appList.get(i).uuid = uuidList.get(i);
+		}
+
+		appList.add(new PebbleApp("Sports app", Constants.SPORTS_UUID));
+		appList.add(new PebbleApp("Golf app", Constants.GOLF_UUID));
+
+		return appList;
+	}
+
+
+
+	public void sendNotificationDismiss(int id)
+	{
+		if (!isOpen())
+			return;
+
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		DataOutputStream dataStream = new DataOutputStream(stream);
+
 		try
 		{
-			receivedUUID = null;
-			uuidWaitLatch = new CountDownLatch(1);
+			dataStream.writeByte(1); //Message goes from phone to watch
+			dataStream.writeShort(0); //Size of the messages (placeholder)
+			dataStream.writeShort(3010); //Endpoint - EXTENSIBLE_NOTIFICATION
+			dataStream.writeByte(1); //REMOVE_NOTIFICATION type
+			writeUnsignedIntLittleEndian(dataStream, id); //notificaiton id
 
-			timeoutThread = new HandlerThread("timeoutThread");
-			timeoutThread.start();
-			
-			timeoutThreadHandler = new Handler(timeoutThread.getLooper());
-			
-			timeoutThreadHandler.postDelayed(new Runnable() {
-				@Override
-				public void run() {
-					returnId();
-				}
-			}, 5000);
-
-			//0x01 = CMD (PHONE_TO_WATCH)
-			//0x00 0x01 = Data length (short) - 1
-			//0x17 0x70 = Endpoint (6000 - APP_MANAGER)
-			//0x07 = Data (7)
-			
-			byte[] requestCurrentApp = new byte[] { 0x1,0x0,0x1,0x17,0x70,0x7 };
-			send(requestCurrentApp);			
-			
-			uuidWaitLatch.await();
-
-			return receivedUUID;
-		}
-		catch (Exception e)
+		} catch (IOException e)
 		{
 			e.printStackTrace();
 		}
-		
-		return null;
+
+		//Insert size
+		int size = stream.size() - 5; //First 5 bytes do not count
+		byte[] message = stream.toByteArray();
+		message[1] = (byte) (size >> 8);
+		message[2] = (byte) size;
+
+		//Disabled until it actually works just to prevent any problems
+		// send(message);
+	}
+
+
+	public void sendActionACKNACKCheckmark(int notificationId, int actionId, String text)
+	{
+		if (!isOpen())
+			return;
+
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		DataOutputStream dataStream = new DataOutputStream(stream);
+
+		try
+		{
+			dataStream.writeByte(1); //Message goes from phone to watch
+			dataStream.writeShort(0); //Size of the messages (placeholder)
+			dataStream.writeShort(3010); //Endpoint - EXTENSIBLE_NOTIFICATION
+			dataStream.writeByte(17); //ACKNACK type
+			writeUnsignedIntLittleEndian(dataStream, notificationId); //notificaiton id
+			dataStream.writeByte(actionId); //Action ID
+			dataStream.writeByte(00); //Icon attribute
+			dataStream.writeByte(01); //Checkmark icon
+			dataStream.writeByte(02); //Subtitle attribute
+			writeUTFPebbleString(dataStream, text, 32);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+		//Insert size
+		int size = stream.size() - 5; //First 5 bytes do not count
+		byte[] message = stream.toByteArray();
+		message[1] = (byte) (size >> 8);
+		message[2] = (byte) size;
+
+		send(message);
+	}
+
+
+	public void sendBasicNotification(String title, String message)
+	{
+		if (!isOpen())
+			return;
+
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		DataOutputStream dataStream = new DataOutputStream(stream);
+
+		Calendar localCalendar = Calendar.getInstance();
+		String date = new SimpleDateFormat().format(localCalendar.getTime());
+
+		int sizeTitle = Math.min(255, title.getBytes().length) + 1;
+		int sizeMessage = Math.min(255, message.getBytes().length) + 1;
+		int sizeDate = Math.min(255, date.getBytes().length) + 1;
+
+		try
+		{
+			dataStream.writeByte(1); //Message goes from phone to watch
+			dataStream.writeShort(1 + sizeTitle + sizeMessage + sizeDate); //Size of the messages(3 strings and one byte)
+			dataStream.writeShort(3000); //Endpoint - NOTIFICATIONS
+			dataStream.writeByte(1); //SMS Notification command
+
+
+			writeLegacyPebbleString(dataStream, title);
+			writeLegacyPebbleString(dataStream, message);
+			writeLegacyPebbleString(dataStream, date);
+
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+
+		send(stream.toByteArray());
+	}
+
+	private void completeWaitingTasks(DeveloperConnectionTaskType type, Object result)
+	{
+		Iterator<DeveloperConnectionResult> iterator = waitingTasks.iterator();
+		while (iterator.hasNext())
+		{
+			DeveloperConnectionResult task = iterator.next();
+			if (task.getType() != type)
+				continue;
+
+			task.finished(result);
+			iterator.remove();
+		}
+	}
+
+	protected class DeveloperConnectionResult<T>
+	{
+		private Handler timeoutCallbackHandler;
+		private Thread timeoutThread;
+		private T result;
+		private CountDownLatch handlerReadyLatch;
+		private CountDownLatch waitingLatch;
+		private boolean isDone;
+		private DeveloperConnectionTaskType type;
+
+		private DeveloperConnectionResult(DeveloperConnectionTaskType type)
+		{
+			handlerReadyLatch = new CountDownLatch(1);
+			timeoutThread = new Thread()
+			{
+				@Override
+				public void run()
+				{
+					Looper.prepare();
+
+					timeoutCallbackHandler = new Handler();
+					handlerReadyLatch.countDown();
+
+					Looper.loop();
+				}
+			};
+			timeoutThread.start();
+
+			waitingLatch = new CountDownLatch(1);
+			isDone = false;
+			this.type = type;
+		}
+
+		public DeveloperConnectionTaskType getType()
+		{
+			return type;
+		}
+
+		protected void finished(T result)
+		{
+			isDone = true;
+			this.result = result;
+			timeoutCallbackHandler.post(new Runnable()
+			{
+				@Override
+				public void run()
+				{
+					Looper.myLooper().quit();
+				}
+			});
+			timeoutCallbackHandler.removeCallbacksAndMessages(null);
+
+			waitingLatch.countDown();
+		}
+
+		public void cancel()
+		{
+			finished(null);
+		}
+
+		public boolean isCancelled()
+		{
+			return isDone && result == null;
+		}
+
+		public boolean isDone()
+		{
+			return isDone;
+		}
+
+		public T get()
+		{
+			try
+			{
+				waitingLatch.await();
+			} catch (InterruptedException e)
+			{
+				e.printStackTrace();
+			}
+
+			return result;
+		}
+
+
+		public T get(long l, TimeUnit timeUnit)
+		{
+			try
+			{
+				handlerReadyLatch.await();
+			} catch (InterruptedException e)
+			{
+				e.printStackTrace();
+			}
+
+			timeoutCallbackHandler.postDelayed(new Runnable()
+			{
+				@Override
+				public void run()
+				{
+					cancel();
+				}
+			}, timeUnit.toMillis(l));
+
+			return get();
+		}
+	}
+
+	protected static enum DeveloperConnectionTaskType
+	{
+		GET_CURRENT_RUNNING_APP,
+		GET_ALL_INSTALLED_APP_META,
+		GET_ALL_INSTALLED_APP_UUID
+	}
+
+	public static void writeUnsignedIntLittleEndian(DataOutputStream stream, int number) throws IOException
+	{
+		number = number & 0xFFFFFFFF;
+
+		stream.write((byte) number);
+		stream.write((byte) (number >> 8));
+		stream.write((byte) (number >> 16));
+		stream.write((byte) (number >> 24));
+	}
+
+	public static void writeUnsignedShortLittleEndian(DataOutputStream stream, int number) throws IOException
+	{
+		number = number & 0xFFFF;
+
+		stream.write((byte) number);
+		stream.write((byte) (number >> 8));
+	}
+
+	public static String getPebbleStringFromByteBuffer(ByteBuffer buffer, int limit)
+	{
+		byte[] stringData = new byte[limit];
+
+		try
+		{
+			buffer.get(stringData);
+			String string = new String(stringData, "UTF-8");
+
+			int end = string.indexOf(0);
+			if (end >= 0)
+				string = string.substring(0, end);
+
+			return string;
+		} catch (UnsupportedEncodingException e)
+		{
+			e.printStackTrace();
+		}
+
+		return "[ERROR]";
+	}
+
+	public static void writeLegacyPebbleString(DataOutputStream stream, String string)
+	{
+		string = TextUtil.trimString(string, 255, true);
+		byte[] stringData = string.getBytes();
+
+		try
+		{
+			stream.writeByte(stringData.length & 0xFF);
+			stream.write(stringData);
+
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public static void writeNullTerminatedPebbleStringList(DataOutputStream stream, List<String> list, int limit) throws IOException
+	{
+		for (String line : list)
+		{
+			if (limit == 0)
+				break;
+
+			line = TextUtil.trimString(line, limit - 1, true);
+			byte[] bytes = line.getBytes();
+			stream.write(bytes);
+			stream.write(0);
+
+			limit -= bytes.length + 1;
+		}
+	}
+
+
+	public static void writeUTFPebbleString(DataOutputStream stream, String string, int limit) throws IOException
+	{
+		string = TextUtil.trimString(string, limit, true);
+		byte[] stringData = string.getBytes();
+
+		writeUnsignedShortLittleEndian(stream, stringData.length);
+		stream.write(stringData);
 	}
 
 }

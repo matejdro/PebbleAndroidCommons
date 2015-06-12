@@ -6,18 +6,13 @@ import static com.getpebble.android.kit.Constants.TRANSACTION_ID;
 
 import java.util.UUID;
 
-import org.json.JSONException;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
 import com.getpebble.android.kit.PebbleKit;
-import com.getpebble.android.kit.util.PebbleDictionary;
 
 import com.matejdro.pebblecommons.PebbleCompanionApplication;
-import com.matejdro.pebblecommons.log.Timber;
-import com.matejdro.pebblecommons.pebble.PebbleTalkerService;
 
 
 public class DataReceiver extends BroadcastReceiver {

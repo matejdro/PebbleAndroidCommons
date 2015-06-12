@@ -1,6 +1,7 @@
 package com.matejdro.pebblecommons.pebble;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 
 import com.getpebble.android.kit.PebbleKit;
 import com.getpebble.android.kit.util.PebbleDictionary;
@@ -9,14 +10,14 @@ import java.util.Deque;
 import java.util.LinkedList;
 
 import com.matejdro.pebblecommons.PebbleCompanionApplication;
-import com.matejdro.pebblecommons.log.Timber;
+import timber.log.Timber;
 
 public class PebbleCommunication
 {
     public static final int PEBBLE_PLATFORM_APLITE = 0;
     public static final int PEBBLE_PLATFORM_BASSALT = 1;
 
-    private Context context;
+    private PebbleTalkerService talkerService;
 
     private Deque<CommModule> queuedModules;
     private int lastSentPacket;
@@ -27,13 +28,15 @@ public class PebbleCommunication
 
     private int connectedPebblePlatform;
 
-    public PebbleCommunication(Context context)
+    public PebbleCommunication(PebbleTalkerService talkerService)
     {
-        this.context = context;
+        this.talkerService = talkerService;
         queuedModules = new LinkedList<CommModule>();
         commBusy = false;
         lastSentPacket = -1;
         retriedNack = false;
+
+        connectedPebblePlatform = talkerService.getGlobalSettings().getInt("LastConnectedPebblePlatform", PEBBLE_PLATFORM_APLITE);
     }
 
     public void sendToPebble(PebbleDictionary packet)
@@ -43,7 +46,7 @@ public class PebbleCommunication
 
         this.lastPacket = packet;
 
-        PebbleKit.sendDataToPebbleWithTransactionId(context, PebbleCompanionApplication.fromContext(context).getPebbleAppUUID(), packet, lastSentPacket);
+        PebbleKit.sendDataToPebbleWithTransactionId(talkerService, PebbleCompanionApplication.fromContext(talkerService).getPebbleAppUUID(), packet, lastSentPacket);
 
         commBusy = true;
         retriedNack = false;
@@ -138,5 +141,9 @@ public class PebbleCommunication
     public void setConnectedPebblePlatform(int connectedPebblePlatform)
     {
         this.connectedPebblePlatform = connectedPebblePlatform;
+
+        SharedPreferences.Editor editor = talkerService.getGlobalSettings().edit();
+        editor.putInt("LastConnectedPebblePlatform", connectedPebblePlatform);
+        editor.apply();
     }
 }
