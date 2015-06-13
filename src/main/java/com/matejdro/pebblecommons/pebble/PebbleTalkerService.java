@@ -85,7 +85,6 @@ public abstract class PebbleTalkerService extends Service
            else
            {
                CommModule receivingModule = registeredIntents.get(intent.getAction());
-               System.out.println("receivingmodule " + receivingModule);
                if (receivingModule != null)
                    receivingModule.gotIntent(intent);
            }

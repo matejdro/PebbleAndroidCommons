@@ -2,6 +2,7 @@ package com.matejdro.pebblecommons;
 
 import android.app.Application;
 import android.content.Context;
+import android.support.annotation.Nullable;
 
 import com.matejdro.pebblecommons.pebble.PebbleTalkerService;
 
@@ -28,7 +29,7 @@ public abstract class PebbleCompanionApplication extends Application
     public abstract UUID getPebbleAppUUID();
     public abstract Class<? extends PebbleTalkerService> getTalkerServiceClass();
 
-    public Map<String, String> getTextReplacementTable()
+    public @Nullable Map<String, String> getTextReplacementTable()
     {
         return null;
     }
