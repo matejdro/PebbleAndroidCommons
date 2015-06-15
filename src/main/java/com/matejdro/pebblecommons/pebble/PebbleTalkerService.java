@@ -51,12 +51,11 @@ public abstract class PebbleTalkerService extends Service
     {
         settings = PreferenceManager.getDefaultSharedPreferences(this);
 
-       initDeveloperConnection();
-
         pebbleCommunication = new PebbleCommunication(this);
 
         handler = new Handler();
 
+        initDeveloperConnection();
         registerModules();
 
         super.onCreate();
@@ -135,6 +134,11 @@ public abstract class PebbleTalkerService extends Service
         try
         {
             devConn = new PebbleDeveloperConnection();
+
+            //None of the Developer Connection features are supported on Basalt, disable it automatically.
+            if (getPebbleCommunication().getConnectedPebblePlatform() == PebbleCommunication.PEBBLE_PLATFORM_BASSALT)
+                return;
+
             devConn.connectBlocking();
         } catch (InterruptedException e)
         {
@@ -149,7 +153,7 @@ public abstract class PebbleTalkerService extends Service
         if (!devConn.isOpen())
             initDeveloperConnection();
 
-        return devConn;
+            return devConn;
     }
 
 	private void receivedPacketFromPebble(String jsonPacket)

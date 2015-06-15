@@ -18,11 +18,9 @@ public class LogWriter
     private static FileWriter writer = null;
     private static String appName;
 
+
     public static void init(final SharedPreferences preferences, String appName)
     {
-        if (preferences.getBoolean(ENABLE_LOG_WRITING, false))
-            open();
-
         listener = new SharedPreferences.OnSharedPreferenceChangeListener()
         {
             @Override
@@ -41,6 +39,8 @@ public class LogWriter
         LogWriter.appName = appName;
 
         preferences.registerOnSharedPreferenceChangeListener(listener);
+        if (preferences.getBoolean(ENABLE_LOG_WRITING, false))
+            open();
     }
 
     private static void open()
