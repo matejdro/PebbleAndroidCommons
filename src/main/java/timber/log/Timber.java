@@ -11,6 +11,13 @@ import java.util.regex.Pattern;
 /** Logging for lazy people. */
 // From https://github.com/JakeWharton/timber
 public final class Timber {
+    private static String tag = "PebbleCompanionApp";
+
+    public static void setTag(String tag)
+    {
+        Timber.tag = tag;
+    }
+
     /** Log a debug message with optional format args. */
     public static void d(String message) {
         TREE_OF_SOULS.d(message);
@@ -116,49 +123,49 @@ public final class Timber {
 
         @Override public void d(String message) {
             String text = "[".concat(createTag()).concat("] ").concat(message);
-            Log.d("PebbleDialer", text);
+            Log.d(tag, text);
             LogWriter.write("D ".concat(text));
         }
 
         @Override public void d(Throwable t, String message) {
             String text = "[".concat(createTag()).concat("] ").concat(message);
-            Log.d("PebbleDialer", text, t);
+            Log.d(tag, text, t);
             LogWriter.write("D ".concat(text));
         }
 
         @Override public void i(String message) {
             String text = "[".concat(createTag()).concat("] ").concat(message);
-            Log.i("PebbleDialer", text);
+            Log.i(tag, text);
             LogWriter.write("I ".concat(text));
         }
 
         @Override public void i(Throwable t, String message) {
             String text = "[".concat(createTag()).concat("] ").concat(message);
-            Log.i("PebbleDialer", text, t);
+            Log.i(tag, text, t);
             LogWriter.write("I ".concat(text));
         }
 
         @Override public void w(String message) {
             String text = "[".concat(createTag()).concat("] ").concat(message);
-            Log.w("PebbleDialer", text);
+            Log.w(tag, text);
             LogWriter.write("W ".concat(text));
         }
 
         @Override public void w(Throwable t, String message) {
             String text = "[".concat(createTag()).concat("] ").concat(message);
-            Log.w("PebbleDialer", text, t);
+            Log.w(tag, text, t);
             LogWriter.write("W ".concat(text));
         }
 
         @Override public void e(String message) {
             String text = "[".concat(createTag()).concat("] ").concat(message);
-            Log.e("PebbleDialer", text);
+            Log.e(tag, text);
             LogWriter.write("E ".concat(text));
         }
 
         @Override public void e(Throwable t, String message) {
             String text = "[".concat(createTag()).concat("] ").concat(message);
-            Log.e("PebbleDialer", text, t);
+            Log.e(tag, text, t);
             LogWriter.write("E ".concat(text));
         }
 
