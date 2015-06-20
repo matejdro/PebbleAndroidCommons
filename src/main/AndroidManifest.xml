@@ -16,7 +16,7 @@
 
         <receiver android:name=".messages.TimeVoiceProvider$VoiceNotificationRemoverReceiver">
             <intent-filter>
-                <action android:name="com.matejdro.pebblecommon.notificationaction.REMOVE_TIME_VOICE_NOTIFICATION" />
+                <action android:name="com.matejdro.pebblecommon.notificationaction.TIME_VOICE_NOTIFICATION_REMOVE" />
             </intent-filter>
         </receiver>
 
