@@ -45,7 +45,7 @@ public class PebbleImageToolkit
        int originalWidth = original.getWidth();
        int originalHeight = original.getHeight();
 
-       if (originalWidth * newWidth < originalHeight * newHeight)
+       if (newWidth / (float) originalWidth < newHeight / (float) originalHeight)
        {
            newHeight = originalHeight * newWidth / originalWidth;
        }
@@ -135,7 +135,15 @@ public class PebbleImageToolkit
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         writeIndexedPebblePNG(bitmap, outputStream);
         return outputStream.toByteArray();
+    }
 
+    public static byte getGColor8FromRGBColor(int color)
+    {
+        int r = Math.round(Color.red(color) / 85f);
+        int g = Math.round(Color.green(color) / 85f);
+        int b = Math.round(Color.blue(color) / 85f);
+
+        return (byte) (0b11000000 | (r << 4) | (g << 2) | b);
     }
 
     public static class SeparatedColor
