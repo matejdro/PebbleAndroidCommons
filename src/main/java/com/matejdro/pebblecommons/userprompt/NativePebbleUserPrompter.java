@@ -32,7 +32,8 @@ public class NativePebbleUserPrompter implements UserPrompter
         // that Pebble duplicate filtering won't affect this.
         char randomCharacter = (char) (System.currentTimeMillis() % Short.MAX_VALUE);
         long padding = System.currentTimeMillis();
-        String instructions = context.getString(R.string.native_pebble_user_prompter_body, randomCharacter, body, padding);
+        String appName = context.getApplicationInfo().loadLabel(context.getPackageManager()).toString();
+        String instructions = context.getString(R.string.native_pebble_user_prompter_body, randomCharacter, body, padding, appName);
 
         PendingIntent removeIntent = PendingIntent.getBroadcast(context, 0, new Intent(INTENT_ACTION_REMOVE), PendingIntent.FLAG_UPDATE_CURRENT);
 
@@ -50,6 +51,7 @@ public class NativePebbleUserPrompter implements UserPrompter
         Notification notification = new NotificationCompat.Builder(context)
                 .setContentTitle(title)
                 .setContentText(instructions)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(instructions))
                 .setSmallIcon(android.R.drawable.sym_def_app_icon) //Dummy icon to satisfy android notification requiremet
                 .extend(wearableExtender)
                 .setContentIntent(removeIntent) //Add option to remove notification on tap from Android statusbar

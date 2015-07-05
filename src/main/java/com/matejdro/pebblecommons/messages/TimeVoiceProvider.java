@@ -44,11 +44,13 @@ public class TimeVoiceProvider extends BroadcastReceiver implements MessageTextP
         // that Pebble duplicate filtering won't affect this.
         char randomCharacter = (char) (System.currentTimeMillis() % Short.MAX_VALUE);
         long padding = System.currentTimeMillis();
-        String instructions = context.getString(R.string.voice_prompt_instructions, randomCharacter, padding);
+        String appName = context.getApplicationInfo().loadLabel(context.getPackageManager()).toString();
+        String instructions = context.getString(R.string.voice_prompt_instructions, randomCharacter, padding, appName);
 
         Notification notification = new NotificationCompat.Builder(context)
                 .setContentTitle(context.getString(R.string.voice_prompt_title))
                 .setContentText(instructions)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(instructions))
                 .setSmallIcon(android.R.drawable.sym_def_app_icon) //Dummy icon to satisfy android notification requiremet
                 .extend(new NotificationCompat.WearableExtender().addAction(voiceAction))
                 .extend(new NotificationCenterExtender().setDisableNCNotification(true)) //Prevent NC from displaying this notification
