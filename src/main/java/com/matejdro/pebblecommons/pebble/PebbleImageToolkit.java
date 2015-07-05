@@ -57,8 +57,11 @@ public class PebbleImageToolkit
        return Bitmap.createScaledBitmap(original, newWidth, newHeight, true);
    }
 
-    public static void ditherToPebbleTimeColors(Bitmap bitmap)
+    public static Bitmap ditherToPebbleTimeColors(Bitmap bitmap)
     {
+        //Make mutable copy of the image before modifying it.
+        bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+
         SeparatedColor[][] separatedColorArray = new SeparatedColor[bitmap.getWidth()][bitmap.getHeight()];
 
         for (int y = 0; y < bitmap.getHeight(); y++)
@@ -95,6 +98,8 @@ public class PebbleImageToolkit
 
             }
         }
+
+        return bitmap;
     }
 
     public static void writeIndexedPebblePNG(Bitmap bitmap, OutputStream stream)
