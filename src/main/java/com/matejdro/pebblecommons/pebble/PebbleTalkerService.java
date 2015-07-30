@@ -134,11 +134,6 @@ public abstract class PebbleTalkerService extends Service
         try
         {
             devConn = new PebbleDeveloperConnection(this);
-
-            //None of the Developer Connection features are supported on Basalt, disable it automatically.
-            if (getPebbleCommunication().getConnectedPebblePlatform() == PebbleCommunication.PEBBLE_PLATFORM_BASSALT)
-                return;
-
             devConn.connectBlocking();
         } catch (InterruptedException e)
         {
