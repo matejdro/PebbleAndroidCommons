@@ -3,9 +3,13 @@ package com.matejdro.pebblecommons.pebble;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.TextureView;
+
 import com.getpebble.android.kit.Constants;
+import com.getpebble.android.kit.PebbleKit;
 import com.matejdro.pebblecommons.util.TextUtil;
+
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -15,7 +19,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Iterator;
@@ -24,18 +27,18 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-import timber.log.Timber;
 
 public class PebbleDeveloperConnection extends WebSocketClient
 {
 	private List<DeveloperConnectionResult> waitingTasks = Collections.synchronizedList(new LinkedList<DeveloperConnectionResult>());
 
+	private Context context;
 
-	public PebbleDeveloperConnection() throws URISyntaxException
+	public PebbleDeveloperConnection(Context context) throws URISyntaxException
 	{
 		super(new URI("ws://127.0.0.1:9000"));
+
+		this.context = context;
 	}
 
 	@Override
@@ -54,6 +57,7 @@ public class PebbleDeveloperConnection extends WebSocketClient
 		int source = bytes.get();
 		if (source == 0) //Message from watch
 		{
+			//noinspection unused
 			short size = bytes.getShort();
 			short endpoint = bytes.getShort();
 			if (endpoint == 6000) //APP_INSTALL_MANAGER
@@ -62,7 +66,7 @@ public class PebbleDeveloperConnection extends WebSocketClient
 				if (cmd == 7) //UUID of the active app
 				{
 					UUID receivedUUID = new UUID(bytes.getLong(), bytes.getLong());
-					completeWaitingTasks(DeveloperConnectionTaskType.GET_CURRENT_RUNNING_APP, receivedUUID);
+					completeWaitingTasks(DeveloperConnectionTaskType.GET_CURRENT_RUNNING_APP_SDK_2, receivedUUID);
 				}
 				else if (cmd == 1) //List of all installed apps
 				{
@@ -73,6 +77,15 @@ public class PebbleDeveloperConnection extends WebSocketClient
 				{
 					List<UUID> installedUUIDs = PebbleApp.getUUIDListFromByteBuffer(bytes);
 					completeWaitingTasks(DeveloperConnectionTaskType.GET_ALL_INSTALLED_APP_UUID, installedUUIDs);
+				}
+			}
+			else if (endpoint == 0x34) //Apps endpoint for SDK 3
+			{
+				int cmd = bytes.get();
+				if (cmd == 1) //Current running app
+				{
+					UUID receivedUUID = new UUID(bytes.getLong(), bytes.getLong());
+					completeWaitingTasks(DeveloperConnectionTaskType.GET_CURRENT_RUNNING_APP_SDK_3, receivedUUID);
 				}
 			}
 		}
@@ -89,12 +102,12 @@ public class PebbleDeveloperConnection extends WebSocketClient
 		ex.printStackTrace();
 	}
 
-	public UUID getCurrentRunningApp()
+	public UUID getCurrentRunningAppSdk2()
 	{
 		if (!isOpen())
 			return null;
 
-		DeveloperConnectionResult<UUID> result = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_CURRENT_RUNNING_APP);
+		DeveloperConnectionResult<UUID> result = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_CURRENT_RUNNING_APP_SDK_2);
 		waitingTasks.add(result);
 
 		//0x01 = CMD (PHONE_TO_WATCH)
@@ -107,7 +120,82 @@ public class PebbleDeveloperConnection extends WebSocketClient
 		return result.get(5, TimeUnit.SECONDS);
 	}
 
+	public UUID getCurrentRunningAppSdk3()
+	{
+		if (!isOpen())
+			return null;
+
+		DeveloperConnectionResult<UUID> result = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_CURRENT_RUNNING_APP_SDK_3);
+		waitingTasks.add(result);
+
+		//0x01 = CMD (PHONE_TO_WATCH)
+		//0x00 0x01 = Data length (short) - 1
+		//0x00 0x34 = Endpoint
+		//0x07 = Data (3) - AppRunStateRequest
+		byte[] requestCurrentApp = new byte[]{0x1, 0x0, 0x1, 0x00, 0x34, 0x3};
+		send(requestCurrentApp);
+
+		return result.get(5, TimeUnit.SECONDS);
+	}
+
+	public UUID getCurrentRunningApp()
+	{
+		PebbleKit.FirmwareVersionInfo firmwareVersionInfo = PebbleKit.getWatchFWVersion(context);
+		if (firmwareVersionInfo == null)
+			return null;
+
+		if (firmwareVersionInfo.getMajor() >= 3)
+			return getCurrentRunningAppSdk3();
+		else
+			return getCurrentRunningAppSdk2();
+	}
+
 	public List<PebbleApp> getInstalledPebbleApps()
+	{
+		if (!isOpen())
+			return null;
+
+		DeveloperConnectionResult<List<PebbleApp>> resultAppMeta = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_ALL_INSTALLED_APP_META);
+		DeveloperConnectionResult<List<UUID>> resultAppUUID = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_ALL_INSTALLED_APP_UUID);
+
+		waitingTasks.add(resultAppMeta);
+		waitingTasks.add(resultAppUUID);
+
+
+		//0x01 = CMD (PHONE_TO_WATCH)
+		//0x00 0x01 = Data length (short) - 1
+		//0x17 0x70 = Endpoint (6000 - APP_MANAGER)
+		//0x01 = Data (1 = get apps meta, 5 = get apps UUID)
+		byte[] request = new byte[]{0x1, 0x0, 0x1, 0x17, 0x70, 0x1};
+		send(request);
+		request = new byte[]{0x1, 0x0, 0x1, 0x17, 0x70, 0x5};
+		send(request);
+
+
+		List<PebbleApp> appList = resultAppMeta.get(5, TimeUnit.SECONDS);
+		if (appList == null)
+			return null;
+
+		List<UUID> uuidList = resultAppUUID.get(5, TimeUnit.SECONDS);
+		if (uuidList == null)
+			return null;
+
+		for (int i = 0; i < appList.size(); i++)
+		{
+			appList.get(i).uuid = uuidList.get(i);
+		}
+
+		appList.add(new PebbleApp("Sports app", Constants.SPORTS_UUID));
+		appList.add(new PebbleApp("Golf app", Constants.GOLF_UUID));
+
+		return appList;
+	}
+
+	/**
+	 * SDK 3.0 only
+	 * @return Currently active Pebble app
+	 */
+	public PebbleApp getCurrentPebbleApp()
 	{
 		if (!isOpen())
 			return null;
@@ -376,9 +464,11 @@ public class PebbleDeveloperConnection extends WebSocketClient
 
 	protected static enum DeveloperConnectionTaskType
 	{
-		GET_CURRENT_RUNNING_APP,
+		GET_CURRENT_RUNNING_APP_SDK_2,
+		GET_CURRENT_RUNNING_APP_SDK_3,
 		GET_ALL_INSTALLED_APP_META,
-		GET_ALL_INSTALLED_APP_UUID
+		GET_ALL_INSTALLED_APP_UUID,
+		GET_CURRENT_APP_INFO
 	}
 
 	public static void writeUnsignedIntLittleEndian(DataOutputStream stream, int number) throws IOException
