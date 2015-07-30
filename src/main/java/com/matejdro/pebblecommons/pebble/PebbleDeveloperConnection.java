@@ -191,53 +191,6 @@ public class PebbleDeveloperConnection extends WebSocketClient
 		return appList;
 	}
 
-	/**
-	 * SDK 3.0 only
-	 * @return Currently active Pebble app
-	 */
-	public PebbleApp getCurrentPebbleApp()
-	{
-		if (!isOpen())
-			return null;
-
-		DeveloperConnectionResult<List<PebbleApp>> resultAppMeta = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_ALL_INSTALLED_APP_META);
-		DeveloperConnectionResult<List<UUID>> resultAppUUID = new DeveloperConnectionResult(DeveloperConnectionTaskType.GET_ALL_INSTALLED_APP_UUID);
-
-		waitingTasks.add(resultAppMeta);
-		waitingTasks.add(resultAppUUID);
-
-
-		//0x01 = CMD (PHONE_TO_WATCH)
-		//0x00 0x01 = Data length (short) - 1
-		//0x17 0x70 = Endpoint (6000 - APP_MANAGER)
-		//0x01 = Data (1 = get apps meta, 5 = get apps UUID)
-		byte[] request = new byte[]{0x1, 0x0, 0x1, 0x17, 0x70, 0x1};
-		send(request);
-		request = new byte[]{0x1, 0x0, 0x1, 0x17, 0x70, 0x5};
-		send(request);
-
-
-		List<PebbleApp> appList = resultAppMeta.get(5, TimeUnit.SECONDS);
-		if (appList == null)
-			return null;
-
-		List<UUID> uuidList = resultAppUUID.get(5, TimeUnit.SECONDS);
-		if (uuidList == null)
-			return null;
-
-		for (int i = 0; i < appList.size(); i++)
-		{
-			appList.get(i).uuid = uuidList.get(i);
-		}
-
-		appList.add(new PebbleApp("Sports app", Constants.SPORTS_UUID));
-		appList.add(new PebbleApp("Golf app", Constants.GOLF_UUID));
-
-		return appList;
-	}
-
-
-
 	public void sendNotificationDismiss(int id)
 	{
 		if (!isOpen())
@@ -468,7 +421,6 @@ public class PebbleDeveloperConnection extends WebSocketClient
 		GET_CURRENT_RUNNING_APP_SDK_3,
 		GET_ALL_INSTALLED_APP_META,
 		GET_ALL_INSTALLED_APP_UUID,
-		GET_CURRENT_APP_INFO
 	}
 
 	public static void writeUnsignedIntLittleEndian(DataOutputStream stream, int number) throws IOException
