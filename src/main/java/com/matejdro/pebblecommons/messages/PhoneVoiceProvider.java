@@ -1,24 +1,21 @@
 package com.matejdro.pebblecommons.messages;
 
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.os.Bundle;
-import android.os.Parcel;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 
 import com.matejdro.pebblecommons.R;
-import com.matejdro.pebblecommons.messages.MessageTextProvider;
-import com.matejdro.pebblecommons.messages.MessageTextProviderListener;
 import com.matejdro.pebblecommons.userprompt.UserPrompter;
 import com.matejdro.pebblecommons.util.BluetoothHeadsetListener;
 
 import java.util.ArrayList;
+
 import timber.log.Timber;
 
 /**
@@ -147,7 +144,7 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
     @Override
     public void onError(int i)
     {
-        Timber.d("voiceError " + i);
+        Timber.d("voiceError %d", i);
 
         stopVoice();
 
@@ -175,7 +172,7 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
         ArrayList<String> matches = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
         int size = Math.min(matches.size(), 10);
 
-        Timber.d("voiceResults " + size);
+        Timber.d("voiceResults %d", size);
 
         if (size == 0)
         {

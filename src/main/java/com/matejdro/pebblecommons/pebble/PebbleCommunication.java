@@ -1,15 +1,14 @@
 package com.matejdro.pebblecommons.pebble;
 
-import android.content.Context;
 import android.content.SharedPreferences;
 
 import com.getpebble.android.kit.PebbleKit;
 import com.getpebble.android.kit.util.PebbleDictionary;
+import com.matejdro.pebblecommons.PebbleCompanionApplication;
 
 import java.util.Deque;
 import java.util.LinkedList;
 
-import com.matejdro.pebblecommons.PebbleCompanionApplication;
 import timber.log.Timber;
 
 public class PebbleCommunication
@@ -42,7 +41,7 @@ public class PebbleCommunication
     public void sendToPebble(PebbleDictionary packet)
     {
         lastSentPacket = (lastSentPacket + 1) % 255;
-        Timber.d("SENT " + lastSentPacket);
+        Timber.d("SENT %d", lastSentPacket);
 
         this.lastPacket = packet;
 
@@ -54,7 +53,7 @@ public class PebbleCommunication
 
     public void sendNext()
     {
-        Timber.d("SendNext " + commBusy);
+        Timber.d("SendNext CommBusy:%b", commBusy);
 
         if (commBusy)
             return;
@@ -63,7 +62,7 @@ public class PebbleCommunication
         {
             CommModule nextModule = queuedModules.peek();
 
-            Timber.d("SendNextModule " + nextModule.getClass().getSimpleName());
+            Timber.d("SendNextModule %s", nextModule.getClass().getSimpleName());
 
             if (nextModule.sendNextMessage())
                 return;
@@ -76,7 +75,7 @@ public class PebbleCommunication
 
     public void receivedAck(int transactionId)
     {
-        Timber.d("ACK " + transactionId);
+        Timber.d("ACK %d", transactionId);
 
         if (transactionId != lastSentPacket || lastPacket == null)
         {
@@ -91,7 +90,7 @@ public class PebbleCommunication
 
     public void receivedNack(int transactionId)
     {
-        Timber.d("NACK " + transactionId);
+        Timber.d("NACK %d", transactionId);
         if (transactionId != lastSentPacket || lastPacket == null)
         {
             Timber.w("Got invalid NACK");

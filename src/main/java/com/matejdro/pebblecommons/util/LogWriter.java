@@ -2,11 +2,14 @@ package com.matejdro.pebblecommons.util;
 
 import android.content.SharedPreferences;
 import android.os.Environment;
+import android.util.Log;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Calendar;
+
+import timber.log.Timber;
 
 /**
  * Created by Matej on 27.10.2014.
@@ -15,9 +18,10 @@ public class LogWriter
 {
     private static final String ENABLE_LOG_WRITING = "enableLogWriter";
     private static SharedPreferences.OnSharedPreferenceChangeListener listener;
-    private static FileWriter writer = null;
+    private static PrintWriter writer = null;
     private static String appName;
 
+    private static Timber.Tree timberTree;
 
     public static void init(final SharedPreferences preferences, String appName)
     {
@@ -53,12 +57,15 @@ public class LogWriter
 
         try
         {
-            writer = new FileWriter(file, true);
+            writer = new PrintWriter(file);
+
+            timberTree = new TimberLogWriterTree();
+            Timber.plant(timberTree);
+
         } catch (IOException e)
         {
             e.printStackTrace();
         }
-
     }
 
     private static void close()
@@ -66,31 +73,72 @@ public class LogWriter
         if (writer == null)
             return;
 
-        try
-        {
-            writer.close();
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        }
+        writer.close();
 
         writer = null;
+        if (timberTree != null)
+        {
+            Timber.uproot(timberTree);
+            timberTree = null;
+        }
     }
 
     public static void write(String text)
     {
         if (writer != null)
         {
-            try
+            writer.flush();
+        }
+    }
+
+    public static boolean isEnabled()
+    {
+        return writer != null;
+    }
+
+    private static class TimberLogWriterTree extends Timber.AppTaggedDebugTree
+    {
+        @Override
+        protected boolean isLoggable(int priority)
+        {
+            //LogWriter should write everything as long as logging is enabled
+            return writer != null;
+        }
+
+        @Override
+        protected void log(int priority, String tag, String message, Throwable t)
+        {
+            Calendar calendar = Calendar.getInstance();
+            writer.write(
+                    calendar.get(Calendar.HOUR) + ":" + calendar.get(Calendar.MINUTE) + ":" + calendar.get(Calendar.SECOND) + ":" + calendar.get(Calendar.MILLISECOND) +
+                    getLogPriorityAbbreviation(priority) + " " + message + "\n"
+                        );
+
+            if (t != null)
             {
-                Calendar calendar = Calendar.getInstance();
-                writer.write(calendar.get(Calendar.HOUR) + ":" + calendar.get(Calendar.MINUTE) + ":" + calendar.get(Calendar.SECOND) + ":" + calendar.get(Calendar.MILLISECOND) + " " + text + "\n");
-                writer.flush();
-            } catch (IOException e)
-            {
-                e.printStackTrace();
+                t.printStackTrace(writer);
             }
 
+            writer.flush();
+        }
+    }
+
+    private static char getLogPriorityAbbreviation(int priority)
+    {
+        switch (priority)
+        {
+            case Log.ASSERT:
+                return 'A';
+            case Log.DEBUG:
+                return 'D';
+            case Log.ERROR:
+                return 'E';
+            case Log.INFO:
+                return 'I';
+            case Log.WARN:
+                return 'W';
+            default:
+                return 'V';
         }
     }
 

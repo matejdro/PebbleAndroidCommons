@@ -10,9 +10,11 @@ import android.util.SparseArray;
 
 import com.getpebble.android.kit.util.PebbleDictionary;
 
+import org.json.JSONException;
+
 import java.net.URISyntaxException;
 import java.util.HashMap;
-import org.json.JSONException;
+
 import timber.log.Timber;
 
 public abstract class PebbleTalkerService extends Service
@@ -165,12 +167,12 @@ public abstract class PebbleTalkerService extends Service
 
 
         int destination = data.getUnsignedIntegerAsLong(0).intValue();
-        Timber.d("Pebble packet for " + destination);
+        Timber.d("Pebble packet for %d", destination);
 
         CommModule module = modules.get(destination);
         if (module == null)
         {
-            Timber.w("Destination module does not exist: " + destination + " Packet: (" + data.toJsonString() + ").");
+            Timber.w("Destination module does not exist: %d  Packet: (%s).",destination, data.toJsonString());
             return;
         }
 
