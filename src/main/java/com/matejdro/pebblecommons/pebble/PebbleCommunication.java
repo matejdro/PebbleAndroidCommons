@@ -104,6 +104,14 @@ public class PebbleCommunication
         if (!retriedNack)
         {
             Timber.d("Retrying last message...");
+
+            // Wait before sending again to allow Pebble app to catch some breath
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
             sendToPebble(lastPacket);
             retriedNack = true;
             return;
