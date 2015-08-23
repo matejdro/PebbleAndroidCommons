@@ -191,38 +191,6 @@ public class PebbleDeveloperConnection extends WebSocketClient
 		return appList;
 	}
 
-	public void sendNotificationDismiss(int id)
-	{
-		if (!isOpen())
-			return;
-
-		ByteArrayOutputStream stream = new ByteArrayOutputStream();
-		DataOutputStream dataStream = new DataOutputStream(stream);
-
-		try
-		{
-			dataStream.writeByte(1); //Message goes from phone to watch
-			dataStream.writeShort(0); //Size of the messages (placeholder)
-			dataStream.writeShort(3010); //Endpoint - EXTENSIBLE_NOTIFICATION
-			dataStream.writeByte(1); //REMOVE_NOTIFICATION type
-			writeUnsignedIntLittleEndian(dataStream, id); //notificaiton id
-
-		} catch (IOException e)
-		{
-			e.printStackTrace();
-		}
-
-		//Insert size
-		int size = stream.size() - 5; //First 5 bytes do not count
-		byte[] message = stream.toByteArray();
-		message[1] = (byte) (size >> 8);
-		message[2] = (byte) size;
-
-		//Disabled until it actually works just to prevent any problems
-		// send(message);
-	}
-
-
 	public void sendActionACKNACKCheckmark(int notificationId, int actionId, String text)
 	{
 		if (!isOpen())
@@ -292,6 +260,50 @@ public class PebbleDeveloperConnection extends WebSocketClient
 
 
 		send(stream.toByteArray());
+	}
+
+	public void sendSDK3ActionACK(int notificationId)
+	{
+		if (!isOpen())
+			return;
+
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		DataOutputStream dataStream = new DataOutputStream(stream);
+
+		try
+		{
+			dataStream.writeByte(1); //Message goes from phone to watch
+			dataStream.writeShort(0); //Size of the messages (placeholder)
+			dataStream.writeShort(0x2CB0); //Endpoint - Timeline Actions
+			dataStream.writeByte(0x11); //Action response command
+
+			//Notification key = UUID
+			writeUnsignedLongLittleEndian(dataStream, notificationId); //First long
+			writeUnsignedLongLittleEndian(dataStream, notificationId); //Second long
+
+			dataStream.writeByte(0x00); //ACK
+			dataStream.writeByte(0x00); //0 additional attributes
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+		int globalSize = stream.size() - 5; //First 5 bytes do not count
+		byte[] message = stream.toByteArray();
+		message[1] = (byte) (globalSize >> 8);
+		message[2] = (byte) globalSize;
+
+		send(message);
+	}
+
+	public static byte[] hexStringToByteArray(String s) {
+		int len = s.length();
+		byte[] data = new byte[len / 2];
+		for (int i = 0; i < len; i += 2) {
+			data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+					+ Character.digit(s.charAt(i+1), 16));
+		}
+		return data;
 	}
 
 	private void completeWaitingTasks(DeveloperConnectionTaskType type, Object result)
@@ -431,6 +443,20 @@ public class PebbleDeveloperConnection extends WebSocketClient
 		stream.write((byte) (number >> 8));
 		stream.write((byte) (number >> 16));
 		stream.write((byte) (number >> 24));
+	}
+
+	public static void writeUnsignedLongLittleEndian(DataOutputStream stream, long number) throws IOException
+	{
+		number = number & 0xFFFFFFFFFFFFFFFFL;
+
+		stream.write((byte) number);
+		stream.write((byte) (number >> 8));
+		stream.write((byte) (number >> 16));
+		stream.write((byte) (number >> 24));
+		stream.write((byte) (number >> 32));
+		stream.write((byte) (number >> 40));
+		stream.write((byte) (number >> 48));
+		stream.write((byte) (number >> 56));
 	}
 
 	public static void writeUnsignedShortLittleEndian(DataOutputStream stream, int number) throws IOException
