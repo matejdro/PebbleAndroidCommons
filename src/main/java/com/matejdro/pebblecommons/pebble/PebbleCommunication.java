@@ -23,7 +23,7 @@ public class PebbleCommunication
     private boolean commBusy;
 
     private PebbleDictionary lastPacket;
-    private boolean retriedNack;
+    private int retryCount;
 
     private int connectedPebblePlatform;
 
@@ -33,7 +33,7 @@ public class PebbleCommunication
         queuedModules = new LinkedList<CommModule>();
         commBusy = false;
         lastSentPacket = -1;
-        retriedNack = false;
+        retryCount = 0;
 
         connectedPebblePlatform = talkerService.getGlobalSettings().getInt("LastConnectedPebblePlatform", PEBBLE_PLATFORM_APLITE);
     }
@@ -48,7 +48,7 @@ public class PebbleCommunication
         PebbleKit.sendDataToPebbleWithTransactionId(talkerService, PebbleCompanionApplication.fromContext(talkerService).getPebbleAppUUID(), packet, lastSentPacket);
 
         commBusy = true;
-        retriedNack = false;
+        retryCount = 0;
     }
 
     public void sendNext()
@@ -97,26 +97,34 @@ public class PebbleCommunication
             return;
         }
 
-        commBusy = false;
-
-        // Retry sending packet once. If we got NACK 2 times in a row, it probably means Pebble app was closed.
-        if (!retriedNack)
+        int delayMs = 0;
+        if (retryCount == 0)
         {
-            Timber.d("Retrying last message...");
+            // We did not fail yet. Use fairly short delay to let Pebble (Time) app room to breathe and retry.
 
-            // Wait before sending again to allow Pebble app to catch some breath
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            Timber.d("Retrying last message for the first time...");
+            delayMs = 200;
+            retryCount = 1;
+        }
+        else if (retryCount == 1)
+        {
+            // We failed once. Try again after longer delay.
 
-            sendToPebble(lastPacket);
-            retriedNack = true;
+            Timber.d("Retrying last message for the second time...");
+            delayMs = 600;
+            retryCount = 2;
+        }
+        else
+        {
+            // We failed twice. App is probably not running or Pebble is not connected. Lets abort this.
+
+            Timber.d("Both retries failed. Aborting send.");
+            commBusy = false;
+            lastPacket = null;
             return;
         }
 
-        lastPacket = null;
+        talkerService.runOnMainThreadDelayed(retryRunnable, delayMs);
     }
 
     public void resetBusy()
@@ -153,4 +161,16 @@ public class PebbleCommunication
         editor.putInt("LastConnectedPebblePlatform", connectedPebblePlatform);
         editor.apply();
     }
+
+    private Runnable retryRunnable = new Runnable()
+    {
+        @Override
+        public void run()
+        {
+            lastSentPacket = (lastSentPacket + 1) % 255;
+            Timber.d("SENT %d", lastSentPacket);
+
+            PebbleKit.sendDataToPebbleWithTransactionId(talkerService, PebbleCompanionApplication.fromContext(talkerService).getPebbleAppUUID(), lastPacket, lastSentPacket);
+        }
+    };
 }

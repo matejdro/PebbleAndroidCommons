@@ -131,6 +131,11 @@ public abstract class PebbleTalkerService extends Service
         handler.post(runnable);
     }
 
+    public void runOnMainThreadDelayed(Runnable runnable, int time)
+    {
+        handler.postDelayed(runnable, time);
+    }
+
     protected void initDeveloperConnection()
     {
         try
