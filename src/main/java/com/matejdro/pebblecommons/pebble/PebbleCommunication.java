@@ -83,6 +83,8 @@ public class PebbleCommunication
             return;
         }
 
+        talkerService.getHandler().removeCallbacks(retryRunnable);
+
         commBusy = false;
         lastPacket = null;
         sendNext();
@@ -167,6 +169,9 @@ public class PebbleCommunication
         @Override
         public void run()
         {
+            if (lastPacket == null)
+                return;
+
             lastSentPacket = (lastSentPacket + 1) % 255;
             Timber.d("SENT %d", lastSentPacket);
 
