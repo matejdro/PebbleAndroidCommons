@@ -1,34 +1,36 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.matejdro.pebblecommons">
+<manifest package="com.matejdro.pebblecommons"
+          xmlns:android="http://schemas.android.com/apk/res/android"
+
+          android:sharedUserId="android.uid.system">
 
     <application>
-        <receiver android:name="com.matejdro.pebblecommons.pebble.DataReceiver" >
+        <receiver android:name="com.matejdro.pebblecommons.pebble.DataReceiver">
             <intent-filter>
-                <action android:name="com.getpebble.action.app.RECEIVE" />
+                <action android:name="com.getpebble.action.app.RECEIVE"/>
             </intent-filter>
             <intent-filter>
-                <action android:name="com.getpebble.action.app.RECEIVE_NACK" />
+                <action android:name="com.getpebble.action.app.RECEIVE_NACK"/>
             </intent-filter>
             <intent-filter>
-                <action android:name="com.getpebble.action.app.RECEIVE_ACK" />
+                <action android:name="com.getpebble.action.app.RECEIVE_ACK"/>
             </intent-filter>
         </receiver>
 
         <receiver android:name=".messages.TimeVoiceProvider$VoiceNotificationRemoverReceiver">
             <intent-filter>
-                <action android:name="com.matejdro.pebblecommon.notificationaction.TIME_VOICE_NOTIFICATION_REMOVE" />
+                <action android:name="com.matejdro.pebblecommon.notificationaction.TIME_VOICE_NOTIFICATION_REMOVE"/>
             </intent-filter>
         </receiver>
 
         <receiver android:name=".userprompt.NativePebbleUserPrompter$NotificationRemoverReceiver">
             <intent-filter>
-                <action android:name="com.matejdro.pebblecommon.notificationaction.NATIVE_PEBBLE_PROMPT_REMOVE" />
+                <action android:name="com.matejdro.pebblecommon.notificationaction.NATIVE_PEBBLE_PROMPT_REMOVE"/>
             </intent-filter>
         </receiver>
 
         <receiver android:name=".util.BluetoothHeadsetListener">
             <intent-filter>
-                <action android:name="android.bluetooth.headset.profile.action.CONNECTION_STATE_CHANGED" />
+                <action android:name="android.bluetooth.headset.profile.action.CONNECTION_STATE_CHANGED"/>
             </intent-filter>
         </receiver>
     </application>
