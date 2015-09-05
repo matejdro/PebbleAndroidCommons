@@ -140,7 +140,7 @@ public class PebbleDeveloperConnection extends WebSocketClient
 
 	public UUID getCurrentRunningApp()
 	{
-		PebbleKit.FirmwareVersionInfo firmwareVersionInfo = PebbleKit.getWatchFWVersion(context);
+		PebbleKit.FirmwareVersionInfo firmwareVersionInfo = PebbleUtil.getPebbleFirmwareVersion(context);
 		if (firmwareVersionInfo == null)
 			return null;
 
