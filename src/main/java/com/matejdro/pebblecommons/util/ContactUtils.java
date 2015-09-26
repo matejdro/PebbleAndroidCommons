@@ -40,6 +40,7 @@ public class ContactUtils {
 	public static void call(String number, Context context)
 	{
 		number = PhoneNumberUtils.stripSeparators(number);
+		number = Uri.encode(number);
 		Log.d("PebbleDialer", "Calling " + number);
 
 		Intent intent = new Intent(Intent.ACTION_CALL);
