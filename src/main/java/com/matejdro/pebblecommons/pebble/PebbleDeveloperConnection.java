@@ -1,8 +1,6 @@
 package com.matejdro.pebblecommons.pebble;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 
 import com.getpebble.android.kit.Constants;
 import com.getpebble.android.kit.PebbleKit;
@@ -312,32 +310,13 @@ public class PebbleDeveloperConnection extends WebSocketClient
 
 	protected class DeveloperConnectionResult<T>
 	{
-		private Handler timeoutCallbackHandler;
-		private Thread timeoutThread;
 		private T result;
-		private CountDownLatch handlerReadyLatch;
 		private CountDownLatch waitingLatch;
 		private boolean isDone;
 		private DeveloperConnectionTaskType type;
 
 		private DeveloperConnectionResult(DeveloperConnectionTaskType type)
 		{
-			handlerReadyLatch = new CountDownLatch(1);
-			timeoutThread = new Thread()
-			{
-				@Override
-				public void run()
-				{
-					Looper.prepare();
-
-					timeoutCallbackHandler = new Handler();
-					handlerReadyLatch.countDown();
-
-					Looper.loop();
-				}
-			};
-			timeoutThread.start();
-
 			waitingLatch = new CountDownLatch(1);
 			isDone = false;
 			this.type = type;
@@ -352,16 +331,6 @@ public class PebbleDeveloperConnection extends WebSocketClient
 		{
 			isDone = true;
 			this.result = result;
-			timeoutCallbackHandler.post(new Runnable()
-			{
-				@Override
-				public void run()
-				{
-					Looper.myLooper().quit();
-				}
-			});
-			timeoutCallbackHandler.removeCallbacksAndMessages(null);
-
 			waitingLatch.countDown();
 		}
 
@@ -393,27 +362,17 @@ public class PebbleDeveloperConnection extends WebSocketClient
 			return result;
 		}
 
-
 		public T get(long l, TimeUnit timeUnit)
 		{
 			try
 			{
-				handlerReadyLatch.await();
+				waitingLatch.await(l, timeUnit);
 			} catch (InterruptedException e)
 			{
 				e.printStackTrace();
 			}
 
-			timeoutCallbackHandler.postDelayed(new Runnable()
-			{
-				@Override
-				public void run()
-				{
-					cancel();
-				}
-			}, timeUnit.toMillis(l));
-
-			return get();
+			return result;
 		}
 	}
 
