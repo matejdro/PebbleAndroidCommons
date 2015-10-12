@@ -1,14 +1,17 @@
 package com.matejdro.pebblecommons.messages;
 
+import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.support.v4.content.ContextCompat;
 
 import com.matejdro.pebblecommons.R;
 import com.matejdro.pebblecommons.userprompt.UserPrompter;
@@ -65,6 +68,12 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
 
         if (BluetoothHeadsetListener.isHeadsetConnected(context))
         {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_DENIED)
+            {
+                sendErrorNotification(context.getString(R.string.voice_input_error_no_bluetooth_permission));
+                return;
+            }
+
             Timber.d("BT Wait");
 
             sendStatusNotification(context.getString(R.string.voiceInputBluetoothWait));
@@ -79,6 +88,12 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
         }
         else
         {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_DENIED)
+            {
+                sendErrorNotification(context.getString(R.string.voice_input_error_no_mic_permission));
+                return;
+            }
+
             Timber.d("Regular voice start");
 
             sendStatusNotification(context.getString(R.string.voiceInputSpeakInstructions));

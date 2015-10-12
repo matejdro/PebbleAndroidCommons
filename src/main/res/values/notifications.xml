@@ -21,6 +21,10 @@
     <string name="voiceInputErrorNotificationSubtitle">Error</string>
     <string name="voiceInputResultActionName">Result %d</string>
 
+    <string name="voice_input_error_no_mic_permission">Sorry, voice input is not working without microphone permission. Please enable it under Android System Settings -> Apps -></string>
+    <string name="voice_input_error_no_bluetooth_permission">Sorry, voice input is not working without microphone permission. Please enable it under Android System Settings -> Apps</string>
+
+
 
 
 </resources>

@@ -1,7 +1,11 @@
 package com.matejdro.pebblecommons.util;
 
+import android.Manifest;
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Environment;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 
 import java.io.File;
@@ -16,23 +20,28 @@ import timber.log.Timber;
  */
 public class LogWriter
 {
-    private static final String ENABLE_LOG_WRITING = "enableLogWriter";
+
+    public static final String SETTING_ENABLE_LOG_WRITING = "enableLogWriter";
+
     private static SharedPreferences.OnSharedPreferenceChangeListener listener;
     private static PrintWriter writer = null;
+    private static Context context;
     private static String appName;
 
     private static Timber.Tree timberTree;
 
-    public static void init(final SharedPreferences preferences, String appName)
+    public static void init(final SharedPreferences defaultPreferences, String appName, Context context)
     {
+        LogWriter.context = context;
+
         listener = new SharedPreferences.OnSharedPreferenceChangeListener()
         {
             @Override
             public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key)
             {
-                if (ENABLE_LOG_WRITING.equals(key))
+                if (SETTING_ENABLE_LOG_WRITING.equals(key))
                 {
-                    if (preferences.getBoolean(ENABLE_LOG_WRITING, false))
+                    if (defaultPreferences.getBoolean(SETTING_ENABLE_LOG_WRITING, false))
                         open();
                     else
                         close();
@@ -42,13 +51,16 @@ public class LogWriter
 
         LogWriter.appName = appName;
 
-        preferences.registerOnSharedPreferenceChangeListener(listener);
-        if (preferences.getBoolean(ENABLE_LOG_WRITING, false))
+        defaultPreferences.registerOnSharedPreferenceChangeListener(listener);
+        if (defaultPreferences.getBoolean(SETTING_ENABLE_LOG_WRITING, false))
             open();
     }
 
     private static void open()
     {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED)
+            return;
+
         File targetFolder = Environment.getExternalStoragePublicDirectory(appName);
         if (!targetFolder.exists())
             targetFolder.mkdir();
@@ -81,6 +93,12 @@ public class LogWriter
             Timber.uproot(timberTree);
             timberTree = null;
         }
+    }
+
+    public static void reopen()
+    {
+        close();
+        open();
     }
 
     public static void write(String text)
