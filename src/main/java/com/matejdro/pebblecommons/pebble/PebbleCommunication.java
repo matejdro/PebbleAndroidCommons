@@ -16,6 +16,8 @@ public class PebbleCommunication
     public static final int PEBBLE_PLATFORM_APLITE = 0;
     public static final int PEBBLE_PLATFORM_BASSALT = 1;
 
+    public static final int GUARANTEED_MINIMUM_PACKET_SIZE = 124;
+
     private PebbleTalkerService talkerService;
 
     private Deque<CommModule> queuedModules;
@@ -26,6 +28,7 @@ public class PebbleCommunication
     private int retryCount;
 
     private int connectedPebblePlatform;
+    private int maximumPacketSize = GUARANTEED_MINIMUM_PACKET_SIZE;
 
     public PebbleCommunication(PebbleTalkerService talkerService)
     {
@@ -162,6 +165,16 @@ public class PebbleCommunication
         SharedPreferences.Editor editor = talkerService.getGlobalSettings().edit();
         editor.putInt("LastConnectedPebblePlatform", connectedPebblePlatform);
         editor.apply();
+    }
+
+    public int getMaximumPacketSize()
+    {
+        return maximumPacketSize;
+    }
+
+    public void setMaximumPacketSize(int maximumPacketSize)
+    {
+        this.maximumPacketSize = maximumPacketSize;
     }
 
     private Runnable retryRunnable = new Runnable()
