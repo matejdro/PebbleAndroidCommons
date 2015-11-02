@@ -13,9 +13,6 @@ import timber.log.Timber;
 
 public class PebbleCommunication
 {
-    public static final int PEBBLE_PLATFORM_APLITE = 0;
-    public static final int PEBBLE_PLATFORM_BASSALT = 1;
-
     public static final int GUARANTEED_MINIMUM_PACKET_SIZE = 124;
 
     private PebbleTalkerService talkerService;
@@ -27,7 +24,7 @@ public class PebbleCommunication
     private PebbleDictionary lastPacket;
     private int retryCount;
 
-    private int connectedPebblePlatform;
+    private WatchPlatform connectedPebblePlatform;
     private int maximumPacketSize = GUARANTEED_MINIMUM_PACKET_SIZE;
 
     public PebbleCommunication(PebbleTalkerService talkerService)
@@ -38,7 +35,7 @@ public class PebbleCommunication
         lastSentPacket = -1;
         retryCount = 0;
 
-        connectedPebblePlatform = talkerService.getGlobalSettings().getInt("LastConnectedPebblePlatform", PEBBLE_PLATFORM_APLITE);
+        connectedPebblePlatform = WatchPlatform.values()[talkerService.getGlobalSettings().getInt("LastConnectedPebblePlatform", WatchPlatform.APLITE.ordinal())];
     }
 
     public void sendToPebble(PebbleDictionary packet)
@@ -153,17 +150,17 @@ public class PebbleCommunication
         queuedModules.addFirst(module);
     }
 
-    public int getConnectedPebblePlatform()
+    public WatchPlatform getConnectedPebblePlatform()
     {
         return connectedPebblePlatform;
     }
 
-    public void setConnectedPebblePlatform(int connectedPebblePlatform)
+    public void setConnectedPebblePlatform(int platformId)
     {
-        this.connectedPebblePlatform = connectedPebblePlatform;
+        this.connectedPebblePlatform = WatchPlatform.values()[platformId];
 
         SharedPreferences.Editor editor = talkerService.getGlobalSettings().edit();
-        editor.putInt("LastConnectedPebblePlatform", connectedPebblePlatform);
+        editor.putInt("LastConnectedPebblePlatform", platformId);
         editor.apply();
     }
 
