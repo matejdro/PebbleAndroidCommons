@@ -461,7 +461,7 @@ public class PebbleDeveloperConnection extends WebSocketClient
 			if (limit == 0)
 				break;
 
-			line = TextUtil.trimString(line, limit - 1, true);
+			line = TextUtil.prepareString(line, limit - 1);
 			byte[] bytes = line.getBytes();
 			stream.write(bytes);
 			stream.write(0);
@@ -473,7 +473,7 @@ public class PebbleDeveloperConnection extends WebSocketClient
 
 	public static void writeUTFPebbleString(DataOutputStream stream, String string, int limit) throws IOException
 	{
-		string = TextUtil.trimString(string, limit, true);
+		string = TextUtil.prepareString(string, limit);
 		byte[] stringData = string.getBytes();
 
 		writeUnsignedShortLittleEndian(stream, stringData.length);
