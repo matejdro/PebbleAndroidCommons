@@ -1,9 +1,15 @@
 package com.matejdro.pebblecommons.util;
 
+import android.Manifest;
+import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.provider.ContactsContract;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
+import android.support.v4.content.ContextCompat;
 import android.telephony.PhoneNumberUtils;
 import android.util.Log;
 
@@ -39,6 +45,18 @@ public class ContactUtils {
 	
 	public static void call(String number, Context context)
 	{
+		if (ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_DENIED)
+		{
+			Notification notification = new NotificationCompat.Builder(context)
+					.setSmallIcon(android.R.drawable.sym_def_app_icon)
+					.setContentTitle("Call failed")
+					.setContentText("No permission")
+					.build();
+
+			NotificationManagerCompat.from(context).notify(123, notification);
+			return;
+		}
+
 		number = PhoneNumberUtils.stripSeparators(number);
 		number = Uri.encode(number);
 		Log.d("PebbleDialer", "Calling " + number);
@@ -47,6 +65,5 @@ public class ContactUtils {
 		intent.setData(Uri.parse("tel:" + number));
 		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		context.startActivity(intent);
-
 	}
 }
