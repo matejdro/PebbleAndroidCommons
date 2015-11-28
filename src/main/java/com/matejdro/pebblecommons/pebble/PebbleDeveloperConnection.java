@@ -461,7 +461,7 @@ public class PebbleDeveloperConnection extends WebSocketClient
 			if (limit == 0)
 				break;
 
-			line = TextUtil.prepareString(line, limit - 1);
+			line = TextUtil.trimString(line, limit - 1, true);
 			byte[] bytes = line.getBytes();
 			stream.write(bytes);
 			stream.write(0);
