@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.util.SparseArray;
 
 import com.getpebble.android.kit.util.PebbleDictionary;
@@ -169,8 +170,9 @@ public abstract class PebbleTalkerService extends Service
         try
         {
             data = PebbleDictionary.fromJson(jsonPacket);
-        } catch (JSONException e)
+        } catch (Exception e)
         {
+            Timber.e("Error while parsing PebbleDictionary!", e);
             e.printStackTrace();
             return;
         }
