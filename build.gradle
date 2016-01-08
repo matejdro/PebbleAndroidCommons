@@ -19,7 +19,6 @@ android {
 }
 
 dependencies {
-    compile 'com.getpebble:pebblekit:3.0.0@aar'
     compile 'ar.com.hjg:pngj:2.1.0'
     compile "com.android.support:support-v4:23.0.1"
 }
