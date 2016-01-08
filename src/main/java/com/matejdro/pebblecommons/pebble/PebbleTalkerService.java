@@ -172,7 +172,7 @@ public abstract class PebbleTalkerService extends Service
             data = PebbleDictionary.fromJson(jsonPacket);
         } catch (Exception e)
         {
-            Timber.e("Error while parsing PebbleDictionary!", e);
+            Timber.e(e, "Error while parsing PebbleDictionary! %s", jsonPacket);
             e.printStackTrace();
             return;
         }
