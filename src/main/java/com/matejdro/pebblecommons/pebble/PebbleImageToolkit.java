@@ -100,7 +100,8 @@ public class PebbleImageToolkit
 
     public static void writeIndexedPebblePNG(Bitmap bitmap, OutputStream stream)
     {
-        ImageInfo imageInfo = new ImageInfo(bitmap.getWidth(), bitmap.getHeight(), 8, false, false, true);
+        LightBitmap lightBitmap = new LightBitmap(bitmap);
+        ImageInfo imageInfo = new ImageInfo(lightBitmap.getWidth(), lightBitmap.getHeight(), 8, false, false, true);
         PngWriter pngWriter = new PngWriter(stream, imageInfo);
 
         PngChunkPLTE paletteChunk = pngWriter.getMetadata().createPLTEChunk();
@@ -111,12 +112,12 @@ public class PebbleImageToolkit
             paletteChunk.setEntry(i, Color.red(color), Color.green(color), Color.blue(color));
         }
 
-        for (int y = 0; y < bitmap.getHeight(); y++)
+        for (int y = 0; y < lightBitmap.getHeight(); y++)
         {
             ImageLineByte imageLine = new ImageLineByte(imageInfo);
-            for (int x = 0; x < bitmap.getWidth(); x++)
+            for (int x = 0; x < lightBitmap.getWidth(); x++)
             {
-                int pixel = bitmap.getPixel(x, y) & 0x00FFFFFF;
+                int pixel = lightBitmap.getPixel(x, y) & 0x00FFFFFF;
                 Byte index = PEBBLE_TIME_PALETTE_MAP.get(pixel);
 
                 if (index == null)
