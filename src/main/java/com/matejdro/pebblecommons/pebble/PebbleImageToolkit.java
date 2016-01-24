@@ -3,17 +3,16 @@ package com.matejdro.pebblecommons.pebble;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 
+import com.matejdro.pebblecommons.util.LightBitmap;
+
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 
 import ar.com.hjg.pngj.ImageInfo;
 import ar.com.hjg.pngj.ImageLineByte;
-import ar.com.hjg.pngj.ImageLineHelper;
-import ar.com.hjg.pngj.ImageLineInt;
 import ar.com.hjg.pngj.PngWriter;
 import ar.com.hjg.pngj.chunks.PngChunkPLTE;
-import ar.com.hjg.pngj.pixels.PixelsWriter;
 
 
 public class PebbleImageToolkit
@@ -59,47 +58,44 @@ public class PebbleImageToolkit
 
     public static Bitmap ditherToPebbleTimeColors(Bitmap bitmap)
     {
-        //Make mutable copy of the image before modifying it.
-        bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+        LightBitmap lightBitmap = new LightBitmap(bitmap);
+        SeparatedColor[][] separatedColorArray = new SeparatedColor[lightBitmap.getWidth()][lightBitmap.getHeight()];
 
-        SeparatedColor[][] separatedColorArray = new SeparatedColor[bitmap.getWidth()][bitmap.getHeight()];
-
-        for (int y = 0; y < bitmap.getHeight(); y++)
+        for (int y = 0; y < lightBitmap.getHeight(); y++)
         {
-            for (int x = 0; x < bitmap.getWidth(); x++)
+            for (int x = 0; x < lightBitmap.getWidth(); x++)
             {
-                separatedColorArray[x][y] = new SeparatedColor(bitmap.getPixel(x, y));
+                separatedColorArray[x][y] = new SeparatedColor(lightBitmap.getPixel(x, y));
             }
         }
 
-        for (int y = 0; y < bitmap.getHeight(); y++)
+        for (int y = 0; y < lightBitmap.getHeight(); y++)
         {
-            for (int x = 0; x < bitmap.getWidth(); x++)
+            for (int x = 0; x < lightBitmap.getWidth(); x++)
             {
                 SeparatedColor oldColor = separatedColorArray[x][y];
                 SeparatedColor newColor = oldColor.getNearestPebbleTimeColor();
-                bitmap.setPixel(x, y, newColor.toRGB());
+                lightBitmap.setPixel(x, y, newColor.toRGB());
 
-                SeparatedColor quantError = oldColor.sub(newColor);
+                newColor.reverseSub(oldColor);
 
-                if (x < bitmap.getWidth() - 1)
-                    separatedColorArray[x + 1][y] = separatedColorArray[x + 1][y].add(quantError.multiply(7d / 16));
+                if (x < lightBitmap.getWidth() - 1)
+                    separatedColorArray[x + 1][y].addAndMultiplyAndDivide16(newColor, 7);
 
-                if (y < bitmap.getHeight() - 1)
+                if (y < lightBitmap.getHeight() - 1)
                 {
                     if (x > 0)
-                        separatedColorArray[x - 1][y + 1] = separatedColorArray[x - 1][y + 1].add(quantError.multiply(3d / 16));
+                        separatedColorArray[x - 1][y + 1].addAndMultiplyAndDivide16(newColor, 3);
 
-                    separatedColorArray[x][y + 1] = separatedColorArray[x][y + 1].add(quantError.multiply(5d / 16));
+                    separatedColorArray[x][y + 1].addAndMultiplyAndDivide16(newColor, 5);
 
-                    if (x < bitmap.getWidth() - 1)
-                        separatedColorArray[x + 1][y + 1] = separatedColorArray[x + 1][y + 1].add(quantError.multiply(1d / 16));
+                    if (x < lightBitmap.getWidth() - 1)
+                        separatedColorArray[x + 1][y + 1].addAndMultiplyAndDivide16(newColor, 1);
                 }
-
             }
         }
 
-        return bitmap;
+        return lightBitmap.toBitmap();
     }
 
     public static void writeIndexedPebblePNG(Bitmap bitmap, OutputStream stream)
@@ -171,24 +167,50 @@ public class PebbleImageToolkit
             this.b = b;
         }
 
-        public SeparatedColor add(SeparatedColor other)
+        public void add(SeparatedColor other)
         {
-            return new SeparatedColor(r + other.r, g + other.g, b + other.b);
+            r += other.r;
+            g += other.g;
+            b += other.b;
         }
 
-        public SeparatedColor sub(SeparatedColor other)
+        public void sub(SeparatedColor other)
         {
-            return new SeparatedColor(r - other.r, g - other.g, b - other.b);
+            r -= other.r;
+            g -= other.g;
+            b -= other.b;
         }
 
-        public SeparatedColor multiply(double scalar)
+        public void reverseSub(SeparatedColor other)
         {
-            return new SeparatedColor((int) (r * scalar), (int) (g * scalar), (int) (b * scalar));
+            r = other.r - r;
+            g = other.g - g;
+            b = other.b - b;
         }
+
+        public void multiply(double scalar)
+        {
+            r *= scalar;
+            g *= scalar;
+            b *= scalar;
+        }
+
+        public void addAndMultiplyAndDivide16(SeparatedColor quantError, int scalar)
+        {
+            r += quantError.r * scalar / 16;
+            g += quantError.g * scalar / 16;
+            b += quantError.b * scalar / 16;
+        }
+
 
         public SeparatedColor getNearestPebbleTimeColor()
         {
-            return new SeparatedColor(Math.round(r / 85f) * 85, Math.round(g / 85f) * 85, Math.round(b / 85f) * 85);
+            return new SeparatedColor((int) (r / 85f + 0.5f) * 85, (int) (g / 85f + 0.5f) * 85, (int) (b / 85f + 0.5f) * 85);
+        }
+
+        public SeparatedColor copy()
+        {
+            return new SeparatedColor(r, g, b);
         }
 
         public int toRGB()
