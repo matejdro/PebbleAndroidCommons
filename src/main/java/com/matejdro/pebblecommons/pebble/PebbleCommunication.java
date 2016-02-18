@@ -1,6 +1,7 @@
 package com.matejdro.pebblecommons.pebble;
 
 import android.content.SharedPreferences;
+import android.os.Handler;
 
 import com.getpebble.android.kit.PebbleKit;
 import com.getpebble.android.kit.util.PebbleDictionary;
@@ -26,6 +27,7 @@ public class PebbleCommunication
 
     private WatchPlatform connectedPebblePlatform;
     private int maximumPacketSize = GUARANTEED_MINIMUM_PACKET_SIZE;
+    private Handler retryHandler;
 
     public PebbleCommunication(PebbleTalkerService talkerService)
     {
@@ -34,6 +36,7 @@ public class PebbleCommunication
         commBusy = false;
         lastSentPacket = -1;
         retryCount = 0;
+        retryHandler = new Handler();
 
         connectedPebblePlatform = WatchPlatform.values()[talkerService.getGlobalSettings().getInt("LastConnectedPebblePlatform", WatchPlatform.APLITE.ordinal())];
     }
@@ -126,12 +129,13 @@ public class PebbleCommunication
             return;
         }
 
-        talkerService.runOnMainThreadDelayed(retryRunnable, delayMs);
+        retryHandler.postDelayed(retryRunnable, delayMs);
     }
 
     public void resetBusy()
     {
         commBusy = false;
+        retryHandler.removeCallbacksAndMessages(null);
     }
 
     public void queueModule(CommModule module)
