@@ -7,6 +7,7 @@ import com.getpebble.android.kit.PebbleKit;
 import com.matejdro.pebblecommons.util.TextUtil;
 
 import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.drafts.Draft_17;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.io.ByteArrayOutputStream;
@@ -34,7 +35,7 @@ public class PebbleDeveloperConnection extends WebSocketClient
 
 	public PebbleDeveloperConnection(Context context) throws URISyntaxException
 	{
-		super(new URI("ws://127.0.0.1:9000"));
+		super(new URI("ws://127.0.0.1:9000"), new Draft_17(), null, 200);
 
 		this.context = context;
 	}
