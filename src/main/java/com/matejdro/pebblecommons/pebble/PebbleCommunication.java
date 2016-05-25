@@ -14,8 +14,6 @@ import timber.log.Timber;
 
 public class PebbleCommunication
 {
-    public static final int GUARANTEED_MINIMUM_PACKET_SIZE = 124;
-
     private PebbleTalkerService talkerService;
 
     private Deque<CommModule> queuedModules;
@@ -25,8 +23,7 @@ public class PebbleCommunication
     private PebbleDictionary lastPacket;
     private int retryCount;
 
-    private WatchPlatform connectedPebblePlatform;
-    private int maximumPacketSize = GUARANTEED_MINIMUM_PACKET_SIZE;
+    private PebbleCapabilities connectedWatchCapabilities;
     private Handler retryHandler;
 
     public PebbleCommunication(PebbleTalkerService talkerService)
@@ -38,7 +35,7 @@ public class PebbleCommunication
         retryCount = 0;
         retryHandler = new Handler();
 
-        connectedPebblePlatform = WatchPlatform.values()[talkerService.getGlobalSettings().getInt("LastConnectedPebblePlatform", WatchPlatform.APLITE.ordinal())];
+        connectedWatchCapabilities = PebbleCapabilities.fromSerializedForm(talkerService.getGlobalSettings().getInt("LastWatchCapabilities", PebbleCapabilities.BASIC_CAPABILITIES_SERIALIZED));
     }
 
     public void sendToPebble(PebbleDictionary packet)
@@ -154,28 +151,21 @@ public class PebbleCommunication
         queuedModules.addFirst(module);
     }
 
-    public WatchPlatform getConnectedPebblePlatform()
+    public PebbleCapabilities getConnectedWatchCapabilities()
     {
-        return connectedPebblePlatform;
+        return connectedWatchCapabilities;
     }
 
-    public void setConnectedPebblePlatform(int platformId)
+    public void setConnectedWatchCapabilities(PebbleCapabilities connectedWatchCapabilities)
     {
-        this.connectedPebblePlatform = WatchPlatform.values()[platformId];
-
-        SharedPreferences.Editor editor = talkerService.getGlobalSettings().edit();
-        editor.putInt("LastConnectedPebblePlatform", platformId);
-        editor.apply();
+        this.connectedWatchCapabilities = connectedWatchCapabilities;
+        talkerService.getGlobalSettings().edit().putInt("LastWatchCapabilities", connectedWatchCapabilities.serialize());
     }
 
-    public int getMaximumPacketSize()
+    public void setConnectedWatchCapabilities(int serializedCapabilities)
     {
-        return maximumPacketSize;
-    }
-
-    public void setMaximumPacketSize(int maximumPacketSize)
-    {
-        this.maximumPacketSize = maximumPacketSize;
+        this.connectedWatchCapabilities = PebbleCapabilities.fromSerializedForm(serializedCapabilities);
+        talkerService.getGlobalSettings().edit().putInt("LastWatchCapabilities", serializedCapabilities);
     }
 
     private Runnable retryRunnable = new Runnable()
