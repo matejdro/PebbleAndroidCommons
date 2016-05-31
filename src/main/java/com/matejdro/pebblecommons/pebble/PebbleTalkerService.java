@@ -10,6 +10,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import com.getpebble.android.kit.util.PebbleDictionary;
+import com.matejdro.pebblecommons.util.TimeoutService;
 
 import org.json.JSONException;
 
@@ -18,7 +19,7 @@ import java.util.HashMap;
 
 import timber.log.Timber;
 
-public abstract class PebbleTalkerService extends Service
+public abstract class PebbleTalkerService extends TimeoutService
 {
     public static final String INTENT_PEBBLE_PACKET = "PebblePacket";
     public static final String INTENT_PEBBLE_ACK = "PebbleAck";
@@ -92,7 +93,8 @@ public abstract class PebbleTalkerService extends Service
            }
        }
 
-        return super.onStartCommand(intent, flags, startId);
+        super.onStartCommand(intent, flags, startId);
+        return START_NOT_STICKY;
     }
 
     protected abstract void registerModules();
