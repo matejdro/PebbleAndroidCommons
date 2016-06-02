@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
@@ -12,6 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Calendar;
+import java.util.Objects;
 
 import timber.log.Timber;
 
@@ -169,5 +171,23 @@ public class LogWriter
             hexChars[j * 2 + 1] = hexArray[v & 0x0F];
         }
         return new String(hexChars);
+    }
+
+    public static void dumpBundle(Bundle bundle)
+    {
+        Timber.d("BundleDump: (%d entries)", bundle.size());
+        for (String key : bundle.keySet())
+        {
+            Object value = bundle.get(key);
+            if (value instanceof Bundle)
+            {
+                Timber.d("%s :", key);
+                dumpBundle((Bundle) value);
+            }
+            else
+            {
+                Timber.d("%s: %s", key, String.valueOf(value));
+            }
+        }
     }
 }
