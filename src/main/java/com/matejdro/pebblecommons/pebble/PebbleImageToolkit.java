@@ -12,13 +12,18 @@ import java.util.HashMap;
 import ar.com.hjg.pngj.ImageInfo;
 import ar.com.hjg.pngj.ImageLineByte;
 import ar.com.hjg.pngj.PngWriter;
+import ar.com.hjg.pngj.chunks.PngChunkBKGD;
 import ar.com.hjg.pngj.chunks.PngChunkPLTE;
+import ar.com.hjg.pngj.chunks.PngChunkTRNS;
 
 
 public class PebbleImageToolkit
 {
+
+
     public static int[] PEBBLE_TIME_PALETTE = new int[64];
     public static HashMap<Integer, Byte> PEBBLE_TIME_PALETTE_MAP = new HashMap<>();
+
     static
     {
         int counter = 0;
@@ -39,22 +44,63 @@ public class PebbleImageToolkit
         }
     }
 
-   public static Bitmap resizePreservingRatio(Bitmap original, int newWidth, int newHeight)
-   {
-       int originalWidth = original.getWidth();
-       int originalHeight = original.getHeight();
+    public static Bitmap resizePreservingRatio(Bitmap original, int newWidth, int newHeight)
+    {
+        return resizePreservingRatio(original, newWidth, newHeight, true);
+    }
 
-       if (newWidth / (float) originalWidth < newHeight / (float) originalHeight)
-       {
-           newHeight = originalHeight * newWidth / originalWidth;
-       }
-       else
-       {
-           newWidth = originalWidth * newHeight / originalHeight;
-       }
+    public static Bitmap resizePreservingRatio(Bitmap original, int newWidth, int newHeight, boolean filter)
+    {
+        int originalWidth = original.getWidth();
+        int originalHeight = original.getHeight();
 
-       return Bitmap.createScaledBitmap(original, newWidth, newHeight, true);
-   }
+        if (newWidth / (float) originalWidth < newHeight / (float) originalHeight)
+        {
+            newHeight = originalHeight * newWidth / originalWidth;
+        }
+        else
+        {
+            newWidth = originalWidth * newHeight / originalHeight;
+        }
+
+        return Bitmap.createScaledBitmap(original, newWidth, newHeight, filter);
+    }
+
+    public static Bitmap createGrayscaleFromAlphaMask(Bitmap original)
+    {
+        LightBitmap lightBitmap = new LightBitmap(original);
+        for (int x = 0; x < lightBitmap.getWidth(); x++)
+        {
+            for (int y = 0; y < lightBitmap.getHeight(); y++)
+            {
+                int pixel = original.getPixel(x, y);
+                int alpha = Color.alpha(pixel);
+
+                lightBitmap.setPixel(x, y, Color.rgb(alpha, alpha, alpha));
+            }
+        }
+
+        return lightBitmap.toBitmap();
+    }
+
+    public static Bitmap invertImage(Bitmap original)
+    {
+        LightBitmap lightBitmap = new LightBitmap(original);
+        for (int x = 0; x < lightBitmap.getWidth(); x++)
+        {
+            for (int y = 0; y < lightBitmap.getHeight(); y++)
+            {
+                int pixel = lightBitmap.getPixel(x, y);
+                int r = 255 - Color.red(pixel);
+                int g = 255 - Color.green(pixel);
+                int b = 255 - Color.blue(pixel);
+
+                lightBitmap.setPixel(x, y, Color.rgb(r, g, b));
+            }
+        }
+
+        return lightBitmap.toBitmap();
+    }
 
     public static Bitmap ditherToPebbleTimeColors(Bitmap bitmap)
     {
@@ -100,6 +146,11 @@ public class PebbleImageToolkit
 
     public static void writeIndexedPebblePNG(Bitmap bitmap, OutputStream stream)
     {
+        writeIndexedPebblePNG(bitmap, stream, null);
+    }
+
+    public static void writeIndexedPebblePNG(Bitmap bitmap, OutputStream stream, Integer transparentColor)
+    {
         LightBitmap lightBitmap = new LightBitmap(bitmap);
         ImageInfo imageInfo = new ImageInfo(lightBitmap.getWidth(), lightBitmap.getHeight(), 8, false, false, true);
         PngWriter pngWriter = new PngWriter(stream, imageInfo);
@@ -110,6 +161,23 @@ public class PebbleImageToolkit
         {
             int color = PEBBLE_TIME_PALETTE[i];
             paletteChunk.setEntry(i, Color.red(color), Color.green(color), Color.blue(color));
+        }
+
+        if (transparentColor != null)
+        {
+            transparentColor &= 0x00FFFFFF;
+
+            Byte index = PEBBLE_TIME_PALETTE_MAP.get(transparentColor);
+            if (index == null)
+                throw new IllegalArgumentException("Color is not supported by Pebble Time: " + Integer.toHexString(transparentColor));
+
+            PngChunkTRNS transparencyChunk = pngWriter.getMetadata().createTRNSChunk();
+
+            int[] paletteAlpha = new int[64];
+            for (int i = 0; i < 64; i++)
+                paletteAlpha[i] = 255;
+            paletteAlpha[index] = 0;
+            transparencyChunk.setPalletteAlpha(paletteAlpha);
         }
 
         for (int y = 0; y < lightBitmap.getHeight(); y++)
@@ -131,6 +199,8 @@ public class PebbleImageToolkit
 
         pngWriter.end();
     }
+
+
 
     public static byte[] getIndexedPebbleImageBytes(Bitmap bitmap)
     {
