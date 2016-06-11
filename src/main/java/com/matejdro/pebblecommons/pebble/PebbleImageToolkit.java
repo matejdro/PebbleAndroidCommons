@@ -83,6 +83,25 @@ public class PebbleImageToolkit
         return lightBitmap.toBitmap();
     }
 
+    public static Bitmap reduceGrayscaleToBlackWhite(Bitmap original)
+    {
+        LightBitmap lightBitmap = new LightBitmap(original);
+        for (int x = 0; x < lightBitmap.getWidth(); x++)
+        {
+            for (int y = 0; y < lightBitmap.getHeight(); y++)
+            {
+                int pixel = original.getPixel(x, y);
+                int red = Color.red(pixel);
+                red = red > 255 / 2 ? 255 : 0;
+
+                lightBitmap.setPixel(x, y, Color.rgb(red, red, red));
+            }
+        }
+
+        return lightBitmap.toBitmap();
+    }
+
+
     public static Bitmap invertImage(Bitmap original)
     {
         LightBitmap lightBitmap = new LightBitmap(original);
@@ -144,6 +163,49 @@ public class PebbleImageToolkit
         return lightBitmap.toBitmap();
     }
 
+    public static Bitmap ditherToBlackWhite(Bitmap bitmap)
+    {
+        LightBitmap lightBitmap = new LightBitmap(bitmap);
+        SeparatedColor[][] separatedColorArray = new SeparatedColor[lightBitmap.getWidth()][lightBitmap.getHeight()];
+
+        for (int y = 0; y < lightBitmap.getHeight(); y++)
+        {
+            for (int x = 0; x < lightBitmap.getWidth(); x++)
+            {
+                separatedColorArray[x][y] = new SeparatedColor(lightBitmap.getPixel(x, y));
+            }
+        }
+
+        for (int y = 0; y < lightBitmap.getHeight(); y++)
+        {
+            for (int x = 0; x < lightBitmap.getWidth(); x++)
+            {
+                SeparatedColor oldColor = separatedColorArray[x][y];
+                SeparatedColor newColor = oldColor.getNearestBlackWhiteColor();
+                lightBitmap.setPixel(x, y, newColor.toRGB());
+
+                newColor.reverseSub(oldColor);
+
+                if (x < lightBitmap.getWidth() - 1)
+                    separatedColorArray[x + 1][y].addAndMultiplyAndDivide16(newColor, 7);
+
+                if (y < lightBitmap.getHeight() - 1)
+                {
+                    if (x > 0)
+                        separatedColorArray[x - 1][y + 1].addAndMultiplyAndDivide16(newColor, 3);
+
+                    separatedColorArray[x][y + 1].addAndMultiplyAndDivide16(newColor, 5);
+
+                    if (x < lightBitmap.getWidth() - 1)
+                        separatedColorArray[x + 1][y + 1].addAndMultiplyAndDivide16(newColor, 1);
+                }
+            }
+        }
+
+        return lightBitmap.toBitmap();
+    }
+
+
     public static void writeIndexedPebblePNG(Bitmap bitmap, OutputStream stream)
     {
         writeIndexedPebblePNG(bitmap, stream, null);
@@ -199,6 +261,33 @@ public class PebbleImageToolkit
 
         pngWriter.end();
     }
+
+    public static void writeMaskedTwoBitPng(Bitmap blackAndWhiteBitmap, OutputStream stream, boolean transparentBlack)
+    {
+        LightBitmap lightBitmap = new LightBitmap(blackAndWhiteBitmap);
+        ImageInfo imageInfo = new ImageInfo(lightBitmap.getWidth(), lightBitmap.getHeight(), 1, false, true, false);
+        PngWriter pngWriter = new PngWriter(stream, imageInfo);
+
+        PngChunkTRNS transparencyChunk = pngWriter.getMetadata().createTRNSChunk();
+        transparencyChunk.setGray(transparentBlack ? 0 : 1);
+
+        for (int y = 0; y < lightBitmap.getHeight(); y++)
+        {
+            ImageLineByte imageLine = new ImageLineByte(imageInfo);
+            for (int x = 0; x < lightBitmap.getWidth(); x++)
+            {
+                int pixel = lightBitmap.getPixel(x, y) & 0x00FFFFFF;
+                int r = Color.red(pixel);
+
+                imageLine.getScanline()[x] = (byte) (r > 255 / 2 ? 1 : 0);
+            }
+
+            pngWriter.writeRow(imageLine, y);
+        }
+
+        pngWriter.end();
+    }
+
 
 
 
@@ -278,6 +367,14 @@ public class PebbleImageToolkit
         {
             return new SeparatedColor((int) (r / 85f + 0.5f) * 85, (int) (g / 85f + 0.5f) * 85, (int) (b / 85f + 0.5f) * 85);
         }
+
+        public SeparatedColor getNearestBlackWhiteColor()
+        {
+            int luma = (r + r + b + g + g + g) / 6;
+            int color = luma > 255 / 2 ? 255 : 0;
+            return new SeparatedColor(color, color, color);
+        }
+
 
         public SeparatedColor copy()
         {
