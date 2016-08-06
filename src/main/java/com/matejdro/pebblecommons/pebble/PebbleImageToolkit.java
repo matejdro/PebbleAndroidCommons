@@ -66,6 +66,28 @@ public class PebbleImageToolkit
         return Bitmap.createScaledBitmap(original, newWidth, newHeight, filter);
     }
 
+    public static Bitmap resizeAndCrop(Bitmap original, int newWidth, int newHeight, boolean filter)
+    {
+        int originalWidth = original.getWidth();
+        int originalHeight = original.getHeight();
+
+        int originalNewWidth = newWidth;
+        int originalNewHeight = newHeight;
+
+        if (newWidth / (float) originalWidth < newHeight / (float) originalHeight)
+        {
+            newWidth = originalWidth * newHeight / originalHeight;
+        }
+        else
+        {
+            newHeight = originalHeight * newWidth / originalWidth;
+        }
+
+        Bitmap scaledBitmap =  Bitmap.createScaledBitmap(original, newWidth, newHeight, filter);
+        return Bitmap.createBitmap(scaledBitmap, (newWidth - originalNewWidth) / 2, (newHeight - originalNewHeight) / 2, originalNewWidth, originalNewHeight, null, filter);
+    }
+
+
     public static Bitmap createGrayscaleFromAlphaMask(Bitmap original)
     {
         LightBitmap lightBitmap = new LightBitmap(original);
