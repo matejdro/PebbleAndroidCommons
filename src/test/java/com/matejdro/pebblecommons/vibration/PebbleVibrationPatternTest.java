@@ -1,8 +1,8 @@
-package com.matejdro.pebblecommons.pebble;
+package com.matejdro.pebblecommons.vibration;
+
+import com.matejdro.pebblecommons.vibration.PebbleVibrationPattern;
 
 import org.junit.Test;
-
-import java.util.Arrays;
 
 import static org.junit.Assert.*;
 
