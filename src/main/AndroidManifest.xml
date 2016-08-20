@@ -1,7 +1,5 @@
 <manifest package="com.matejdro.pebblecommons"
-          xmlns:android="http://schemas.android.com/apk/res/android"
-
-          android:sharedUserId="android.uid.system">
+          xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
         <receiver android:name="com.matejdro.pebblecommons.pebble.DataReceiver">
