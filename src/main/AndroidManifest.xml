@@ -2,7 +2,7 @@
           xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
-        <receiver android:name="com.matejdro.pebblecommons.pebble.DataReceiver">
+        <receiver android:name="com.matejdro.pebblecommons.pebble.DataReceiver" android:enabled="@bool/enable_companion_receiver">
             <intent-filter>
                 <action android:name="com.getpebble.action.app.RECEIVE"/>
             </intent-filter>
