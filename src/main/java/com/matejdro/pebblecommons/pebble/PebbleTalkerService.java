@@ -30,6 +30,7 @@ public abstract class PebbleTalkerService extends TimeoutService
     protected PebbleDeveloperConnection devConn;
 
     private PebbleCommunication pebbleCommunication;
+    private AckNackReceiver ackNackReceiver;
 
     private SparseArray<CommModule> modules = new SparseArray<CommModule>();
     private HashMap<String, CommModule> registeredIntents = new HashMap<String, CommModule>();
@@ -47,6 +48,8 @@ public abstract class PebbleTalkerService extends TimeoutService
     {
         if (devConn != null)
             devConn.close();
+
+        ackNackReceiver.unregister();
     }
 
 
@@ -56,11 +59,13 @@ public abstract class PebbleTalkerService extends TimeoutService
         settings = PreferenceManager.getDefaultSharedPreferences(this);
 
         pebbleCommunication = new PebbleCommunication(this);
+        ackNackReceiver = new AckNackReceiver(this, pebbleCommunication);
 
         handler = new Handler();
 
         initDeveloperConnection();
         registerModules();
+        ackNackReceiver.register();
 
         super.onCreate();
     }

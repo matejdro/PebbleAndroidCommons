@@ -6,12 +6,6 @@
             <intent-filter>
                 <action android:name="com.getpebble.action.app.RECEIVE"/>
             </intent-filter>
-            <intent-filter>
-                <action android:name="com.getpebble.action.app.RECEIVE_NACK"/>
-            </intent-filter>
-            <intent-filter>
-                <action android:name="com.getpebble.action.app.RECEIVE_ACK"/>
-            </intent-filter>
         </receiver>
 
         <receiver android:name=".messages.TimeVoiceProvider$VoiceNotificationRemoverReceiver">

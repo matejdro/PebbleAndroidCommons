@@ -26,40 +26,12 @@ public class DataReceiver extends BroadcastReceiver {
         context.startService(intent);
     }
 
-    public void receivedAck(Context context, int transactionId, Class<? extends PebbleTalkerService> talkerClass)
-    {
-        Intent intent = new Intent(context, talkerClass);
-        intent.setAction(PebbleTalkerService.INTENT_PEBBLE_ACK);
-        intent.putExtra("transactionId", transactionId);
-        context.startService(intent);
-    }
-
-    public void receivedNack(Context context, int transactionId, Class<? extends PebbleTalkerService> talkerClass)
-    {
-        Intent intent = new Intent(context, talkerClass);
-        intent.setAction(PebbleTalkerService.INTENT_PEBBLE_NACK);
-        intent.putExtra("transactionId", transactionId);
-        context.startService(intent);
-    }
-
     public void onReceive(final Context context, final Intent intent) {
         final int transactionId = intent.getIntExtra(TRANSACTION_ID, -1);
 
         PebbleCompanionApplication application = PebbleCompanionApplication.fromContext(context);
 
-
-        if ("com.getpebble.action.app.RECEIVE_ACK".equals(intent.getAction()))
-        {
-            receivedAck(context, transactionId, application.getTalkerServiceClass());
-            return;
-        }
-        if ("com.getpebble.action.app.RECEIVE_NACK".equals(intent.getAction()))
-        {
-            receivedNack(context, transactionId, application.getTalkerServiceClass());
-            return;
-        }
-
-        else if (!"com.getpebble.action.app.RECEIVE".equals(intent.getAction()))
+        if (!"com.getpebble.action.app.RECEIVE".equals(intent.getAction()))
             return;
 
         final UUID receivedUuid = (UUID) intent.getSerializableExtra(APP_UUID);
