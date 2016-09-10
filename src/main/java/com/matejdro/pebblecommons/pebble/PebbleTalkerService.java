@@ -1,18 +1,14 @@
 package com.matejdro.pebblecommons.pebble;
 
-import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.util.SparseArray;
 
 import com.getpebble.android.kit.util.PebbleDictionary;
 import com.matejdro.pebblecommons.util.TimeoutService;
-
-import org.json.JSONException;
 
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -27,7 +23,7 @@ public abstract class PebbleTalkerService extends TimeoutService
 
     private SharedPreferences settings;
 
-    protected PebbleDeveloperConnection devConn;
+    private PebbleDeveloperConnection devConn;
 
     private PebbleCommunication pebbleCommunication;
     private AckNackReceiver ackNackReceiver;
@@ -36,6 +32,8 @@ public abstract class PebbleTalkerService extends TimeoutService
     private HashMap<String, CommModule> registeredIntents = new HashMap<String, CommModule>();
 
     private Handler handler;
+
+    private boolean enableDeveloperConnectionRefreshing = true;
 
     @Override
     public IBinder onBind(Intent intent)
@@ -63,7 +61,6 @@ public abstract class PebbleTalkerService extends TimeoutService
 
         handler = new Handler();
 
-        initDeveloperConnection();
         registerModules();
         ackNackReceiver.register();
 
@@ -149,12 +146,17 @@ public abstract class PebbleTalkerService extends TimeoutService
         return handler;
     }
 
-    protected void initDeveloperConnection()
+    private void initDeveloperConnection()
     {
+        handler.removeCallbacks(developerConnectionRefresher);
+
         try
         {
-            devConn = new PebbleDeveloperConnection(this);
+            devConn = createDeveloperConnection();
             devConn.connectBlocking();
+
+            if (devConn.isOpen() && enableDeveloperConnectionRefreshing)
+                handler.postDelayed(developerConnectionRefresher, 9 * 60 * 1000); //Refresh developer connection every 9 minutes to prevent closing on Pebble's side.
         } catch (InterruptedException e)
         {
         } catch (URISyntaxException e)
@@ -162,16 +164,23 @@ public abstract class PebbleTalkerService extends TimeoutService
         }
     }
 
+    protected PebbleDeveloperConnection createDeveloperConnection() throws URISyntaxException {
+        return new PebbleDeveloperConnection(this);
+    }
 
     public PebbleDeveloperConnection getDeveloperConnection()
     {
-        if (!devConn.isOpen())
+        if (devConn == null || !devConn.isOpen())
             initDeveloperConnection();
 
-            return devConn;
+        return devConn;
     }
 
-	private void receivedPacketFromPebble(String jsonPacket)
+    public void setEnableDeveloperConnectionRefreshing(boolean enableDeveloperConnectionRefreshing) {
+        this.enableDeveloperConnectionRefreshing = enableDeveloperConnectionRefreshing;
+    }
+
+    private void receivedPacketFromPebble(String jsonPacket)
 	{
         PebbleDictionary data = null;
         try
@@ -196,6 +205,13 @@ public abstract class PebbleTalkerService extends TimeoutService
         }
 
         module.gotMessageFromPebble(data);
-
 	}
+
+    private Runnable developerConnectionRefresher = new Runnable() {
+        @Override
+        public void run() {
+            devConn.close();
+            initDeveloperConnection();
+        }
+    };
 }
