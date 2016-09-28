@@ -87,6 +87,24 @@ public class PebbleImageToolkit
         return Bitmap.createBitmap(scaledBitmap, (newWidth - originalNewWidth) / 2, (newHeight - originalNewHeight) / 2, originalNewWidth, originalNewHeight, null, filter);
     }
 
+    public static Bitmap multiplyBrightness(Bitmap original, float multiplier)
+    {
+        LightBitmap lightBitmap = new LightBitmap(original);
+        for (int x = 0; x < lightBitmap.getWidth(); x++)
+        {
+            for (int y = 0; y < lightBitmap.getHeight(); y++)
+            {
+                int pixel = original.getPixel(x, y);
+                int r = Color.red(pixel);
+                int g = Color.green(pixel);
+                int b = Color.blue(pixel);
+
+                lightBitmap.setPixel(x, y, Color.rgb((int) (r * multiplier), (int) (g * multiplier), (int) (b * multiplier)));
+            }
+        }
+
+        return lightBitmap.toBitmap();
+    }
 
     public static Bitmap createGrayscaleFromAlphaMask(Bitmap original)
     {
