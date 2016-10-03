@@ -168,7 +168,6 @@ public class VibrationPatternPicker extends RelativeLayout
 
     private void tapModeFingerDown()
     {
-        Log.d("TAG", "Tap down");
         vibrator.vibrate(PebbleVibrationPattern.MAX_LENGTH_MS);
 
         if (lastChangeTime == 0)
@@ -183,7 +182,6 @@ public class VibrationPatternPicker extends RelativeLayout
 
     private void tapModeFingerUp()
     {
-        Log.d("TAG", "Tap up");
         vibrator.cancel();
         addChange();
     }
