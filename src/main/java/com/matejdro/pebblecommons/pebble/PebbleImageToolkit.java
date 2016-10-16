@@ -2,6 +2,7 @@ package com.matejdro.pebblecommons.pebble;
 
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.support.annotation.ColorInt;
 
 import com.matejdro.pebblecommons.util.LightBitmap;
 
@@ -108,6 +109,15 @@ public class PebbleImageToolkit
 
     public static Bitmap createGrayscaleFromAlphaMask(Bitmap original)
     {
+        return createMaskFromAlpha(original, Color.WHITE, true);
+    }
+
+    public static Bitmap createMaskFromAlpha(Bitmap original, @ColorInt int maskColor, boolean blackBackground)
+    {
+        int colorR = Color.red(maskColor);
+        int colorG = Color.green(maskColor);
+        int colorB = Color.blue(maskColor);
+
         LightBitmap lightBitmap = new LightBitmap(original);
         for (int x = 0; x < lightBitmap.getWidth(); x++)
         {
@@ -116,7 +126,15 @@ public class PebbleImageToolkit
                 int pixel = original.getPixel(x, y);
                 int alpha = Color.alpha(pixel);
 
-                lightBitmap.setPixel(x, y, Color.rgb(alpha, alpha, alpha));
+                if (blackBackground)
+                {
+                    lightBitmap.setPixel(x, y, Color.rgb(alpha * colorR / 255, alpha * colorG / 255, alpha * colorB / 255));
+                }
+                else
+                {
+                    int revAlpha = 255 - alpha;
+                    lightBitmap.setPixel(x, y, Color.rgb(revAlpha + alpha * colorR / 255, revAlpha + alpha * colorG / 255, revAlpha + alpha * colorB / 255));
+                }
             }
         }
 
@@ -150,15 +168,38 @@ public class PebbleImageToolkit
             for (int y = 0; y < lightBitmap.getHeight(); y++)
             {
                 int pixel = lightBitmap.getPixel(x, y);
-                int r = 255 - Color.red(pixel);
-                int g = 255 - Color.green(pixel);
-                int b = 255 - Color.blue(pixel);
-
-                lightBitmap.setPixel(x, y, Color.rgb(r, g, b));
+                lightBitmap.setPixel(x, y, invertColor(pixel));
             }
         }
 
         return lightBitmap.toBitmap();
+    }
+
+    public static @ColorInt int invertColor(@ColorInt int color)
+    {
+        int r = 255 - Color.red(color);
+        int g = 255 - Color.green(color);
+        int b = 255 - Color.blue(color);
+
+        return Color.rgb(r, g, b);
+    }
+
+    public static @ColorInt int multiplyBrightness(@ColorInt int color, float multiplier)
+    {
+        int r = (int) (Color.red(color) * multiplier);
+        int g = (int) (Color.green(color) * multiplier);
+        int b = (int) (Color.blue(color) * multiplier);
+
+        return Color.rgb(r, g, b);
+    }
+
+    public static int getLuminance(@ColorInt int color)
+    {
+        int r = Color.red(color);
+        int g = Color.green(color);
+        int b = Color.blue(color);
+
+        return (r + r + b + g + g + g) / 6;
     }
 
     public static Bitmap ditherToPebbleTimeColors(Bitmap bitmap)
