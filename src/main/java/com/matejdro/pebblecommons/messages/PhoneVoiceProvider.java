@@ -101,10 +101,12 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
         }
     }
 
-    public void stopVoice()
-    {
-        recognizer.stopListening();
-        recognizer.destroy();
+    public void stopVoice() {
+        if (recognizer != null)
+        {
+            recognizer.stopListening();
+            recognizer.destroy();
+        }
 
         AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         if (audioManager.isBluetoothScoOn())
