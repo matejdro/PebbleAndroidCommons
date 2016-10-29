@@ -3,6 +3,7 @@ package com.matejdro.pebblecommons.pebble;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.util.SparseArray;
@@ -31,7 +32,8 @@ public abstract class PebbleTalkerService extends TimeoutService
     private SparseArray<CommModule> modules = new SparseArray<CommModule>();
     private HashMap<String, CommModule> registeredIntents = new HashMap<String, CommModule>();
 
-    private Handler handler;
+    private HandlerThread pebbleProcessorThread;
+    private Handler pebbleThreadHandler;
 
     private boolean enableDeveloperConnectionRefreshing = true;
 
@@ -48,6 +50,7 @@ public abstract class PebbleTalkerService extends TimeoutService
             devConn.close();
 
         ackNackReceiver.unregister();
+        pebbleProcessorThread.quit();
     }
 
 
@@ -59,41 +62,48 @@ public abstract class PebbleTalkerService extends TimeoutService
         pebbleCommunication = new PebbleCommunication(this);
         ackNackReceiver = new AckNackReceiver(this, pebbleCommunication);
 
-        handler = new Handler();
-
         registerModules();
         ackNackReceiver.register();
+
+        pebbleProcessorThread = new HandlerThread("PebbleProcessorThread", Thread.NORM_PRIORITY - 1);
+        pebbleProcessorThread.start();
+        pebbleThreadHandler = new Handler(pebbleProcessorThread.getLooper());
 
         super.onCreate();
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId)
+    public int onStartCommand(final Intent intent, int flags, int startId)
     {
-       if (intent != null && intent.getAction() != null)
-       {
-           if (intent.getAction().equals(INTENT_PEBBLE_PACKET))
-           {
-               String json = intent.getStringExtra("packet");
-               receivedPacketFromPebble(json);
-           }
-           else if (intent.getAction().equals(INTENT_PEBBLE_ACK))
-           {
-               int transactionId = intent.getIntExtra("transactionId", -1);
-               getPebbleCommunication().receivedAck(transactionId);
-           }
-           else if (intent.getAction().equals(INTENT_PEBBLE_NACK))
-           {
-               int transactionId = intent.getIntExtra("transactionId", -1);
-               getPebbleCommunication().receivedNack(transactionId);
-           }
-           else
-           {
-               CommModule receivingModule = registeredIntents.get(intent.getAction());
-               if (receivingModule != null)
-                   receivingModule.gotIntent(intent);
-           }
-       }
+        pebbleThreadHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (intent != null && intent.getAction() != null)
+                {
+                    if (intent.getAction().equals(INTENT_PEBBLE_PACKET))
+                    {
+                        String json = intent.getStringExtra("packet");
+                        receivedPacketFromPebble(json);
+                    }
+                    else if (intent.getAction().equals(INTENT_PEBBLE_ACK))
+                    {
+                        int transactionId = intent.getIntExtra("transactionId", -1);
+                        getPebbleCommunication().receivedAck(transactionId);
+                    }
+                    else if (intent.getAction().equals(INTENT_PEBBLE_NACK))
+                    {
+                        int transactionId = intent.getIntExtra("transactionId", -1);
+                        getPebbleCommunication().receivedNack(transactionId);
+                    }
+                    else
+                    {
+                        CommModule receivingModule = registeredIntents.get(intent.getAction());
+                        if (receivingModule != null)
+                            receivingModule.gotIntent(intent);
+                    }
+                }
+            }
+        });
 
         super.onStartCommand(intent, flags, startId);
         return START_NOT_STICKY;
@@ -131,24 +141,24 @@ public abstract class PebbleTalkerService extends TimeoutService
         return pebbleCommunication;
     }
 
-    public void runOnMainThread(Runnable runnable)
+    public void runOnPebbleThread(Runnable runnable)
     {
-        handler.post(runnable);
+        pebbleThreadHandler.post(runnable);
     }
 
-    public void runOnMainThreadDelayed(Runnable runnable, int time)
+    public void runOnPebbleThreadDelayed(Runnable runnable, int time)
     {
-        handler.postDelayed(runnable, time);
+        pebbleThreadHandler.postDelayed(runnable, time);
     }
 
-    public Handler getHandler()
+    public Handler getPebbleThreadHandler()
     {
-        return handler;
+        return pebbleThreadHandler;
     }
 
     private void initDeveloperConnection()
     {
-        handler.removeCallbacks(developerConnectionRefresher);
+        pebbleThreadHandler.removeCallbacks(developerConnectionRefresher);
 
         try
         {
@@ -156,7 +166,7 @@ public abstract class PebbleTalkerService extends TimeoutService
             devConn.connectBlocking();
 
             if (devConn.isOpen() && enableDeveloperConnectionRefreshing)
-                handler.postDelayed(developerConnectionRefresher, 9 * 60 * 1000); //Refresh developer connection every 9 minutes to prevent closing on Pebble's side.
+                pebbleThreadHandler.postDelayed(developerConnectionRefresher, 9 * 60 * 1000); //Refresh developer connection every 9 minutes to prevent closing on Pebble's side.
         } catch (InterruptedException e)
         {
         } catch (URISyntaxException e)
@@ -180,32 +190,37 @@ public abstract class PebbleTalkerService extends TimeoutService
         this.enableDeveloperConnectionRefreshing = enableDeveloperConnectionRefreshing;
     }
 
-    private void receivedPacketFromPebble(String jsonPacket)
-	{
-        PebbleDictionary data = null;
-        try
-        {
-            data = PebbleDictionary.fromJson(jsonPacket);
-        } catch (Exception e)
-        {
-            Timber.e(e, "Error while parsing PebbleDictionary! %s", jsonPacket);
-            e.printStackTrace();
-            return;
-        }
+    private void receivedPacketFromPebble(final String jsonPacket)
+    {
+        pebbleThreadHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                PebbleDictionary data = null;
+                try
+                {
+                    data = PebbleDictionary.fromJson(jsonPacket);
+                } catch (Exception e)
+                {
+                    Timber.e(e, "Error while parsing PebbleDictionary! %s", jsonPacket);
+                    e.printStackTrace();
+                    return;
+                }
 
 
-        int destination = data.getUnsignedIntegerAsLong(0).intValue();
-        Timber.d("Pebble packet for %d", destination);
+                int destination = data.getUnsignedIntegerAsLong(0).intValue();
+                Timber.d("Pebble packet for %d", destination);
 
-        CommModule module = modules.get(destination);
-        if (module == null)
-        {
-            Timber.w("Destination module does not exist: %d  Packet: (%s).",destination, data.toJsonString());
-            return;
-        }
+                CommModule module = modules.get(destination);
+                if (module == null)
+                {
+                    Timber.w("Destination module does not exist: %d  Packet: (%s).",destination, data.toJsonString());
+                    return;
+                }
 
-        module.gotMessageFromPebble(data);
-	}
+                module.gotMessageFromPebble(data);
+            }
+        });
+    }
 
     private Runnable developerConnectionRefresher = new Runnable() {
         @Override

@@ -83,7 +83,7 @@ public class PebbleCommunication
             return;
         }
 
-        talkerService.getHandler().removeCallbacks(retryRunnable);
+        talkerService.getPebbleThreadHandler().removeCallbacks(retryRunnable);
 
         commBusy = false;
         lastPacket = null;
