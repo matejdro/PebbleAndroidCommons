@@ -33,7 +33,7 @@ public class PebbleCommunication
         commBusy = false;
         lastSentPacket = -1;
         retryCount = 0;
-        retryHandler = new Handler();
+        retryHandler = new Handler(talkerService.getPebbleThreadHandler().getLooper());
 
         connectedWatchCapabilities = PebbleCapabilities.fromSerializedForm(talkerService.getGlobalSettings().getInt("LastWatchCapabilities", PebbleCapabilities.BASIC_CAPABILITIES_SERIALIZED));
     }

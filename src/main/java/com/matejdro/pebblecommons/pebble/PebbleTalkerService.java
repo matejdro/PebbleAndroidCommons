@@ -59,15 +59,15 @@ public abstract class PebbleTalkerService extends TimeoutService
     {
         settings = PreferenceManager.getDefaultSharedPreferences(this);
 
-        pebbleCommunication = new PebbleCommunication(this);
-        ackNackReceiver = new AckNackReceiver(this, pebbleCommunication);
-
         registerModules();
-        ackNackReceiver.register();
 
         pebbleProcessorThread = new HandlerThread("PebbleProcessorThread", Thread.NORM_PRIORITY - 1);
         pebbleProcessorThread.start();
         pebbleThreadHandler = new Handler(pebbleProcessorThread.getLooper());
+
+        pebbleCommunication = new PebbleCommunication(this);
+        ackNackReceiver = new AckNackReceiver(this, getPebbleThreadHandler(), pebbleCommunication);
+        ackNackReceiver.register();
 
         super.onCreate();
     }

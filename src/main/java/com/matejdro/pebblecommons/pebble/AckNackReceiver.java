@@ -4,15 +4,18 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Handler;
 
 import static com.getpebble.android.kit.Constants.TRANSACTION_ID;
 
 public class AckNackReceiver extends BroadcastReceiver {
     private Context context;
+    private Handler callHandler;
     private PebbleCommunication communication;
 
-    public AckNackReceiver(Context context, PebbleCommunication communication) {
+    public AckNackReceiver(Context context, Handler callHandler, PebbleCommunication communication) {
         this.context = context;
+        this.callHandler = callHandler;
         this.communication = communication;
     }
 
@@ -33,11 +36,21 @@ public class AckNackReceiver extends BroadcastReceiver {
 
         if ("com.getpebble.action.app.RECEIVE_ACK".equals(intent.getAction()))
         {
-            communication.receivedAck(transactionId);
+            callHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    communication.receivedAck(transactionId);
+                }
+            });
         }
         else if ("com.getpebble.action.app.RECEIVE_NACK".equals(intent.getAction()))
         {
-            communication.receivedNack(transactionId);
+            callHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    communication.receivedNack(transactionId);
+                }
+            });
         }
 
     }
