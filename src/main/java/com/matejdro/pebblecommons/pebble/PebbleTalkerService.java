@@ -68,7 +68,7 @@ public abstract class PebbleTalkerService extends TimeoutService
         pebbleThreadHandler = new Handler(pebbleProcessorThread.getLooper());
 
         pebbleCommunication = new PebbleCommunication(this);
-        ackNackReceiver = new AckNackReceiver(this, getPebbleThreadHandler(), pebbleCommunication);
+        ackNackReceiver = new AckNackReceiver(this);
         ackNackReceiver.register();
 
         mainThreadHandler = new Handler(Looper.getMainLooper());

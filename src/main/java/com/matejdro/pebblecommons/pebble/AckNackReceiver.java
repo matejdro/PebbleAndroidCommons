@@ -1,22 +1,21 @@
 package com.matejdro.pebblecommons.pebble;
 
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ComponentInfo;
 import android.os.Handler;
 
+import com.matejdro.pebblecommons.PebbleCompanionApplication;
 import static com.getpebble.android.kit.Constants.TRANSACTION_ID;
 
 public class AckNackReceiver extends BroadcastReceiver {
     private Context context;
-    private Handler callHandler;
-    private PebbleCommunication communication;
 
-    public AckNackReceiver(Context context, Handler callHandler, PebbleCommunication communication) {
+    public AckNackReceiver(Context context) {
         this.context = context;
-        this.callHandler = callHandler;
-        this.communication = communication;
     }
 
     public void register()
@@ -36,21 +35,17 @@ public class AckNackReceiver extends BroadcastReceiver {
 
         if ("com.getpebble.action.app.RECEIVE_ACK".equals(intent.getAction()))
         {
-            callHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    communication.receivedAck(transactionId);
-                }
-            });
+            Intent outIntent = new Intent(context, PebbleCompanionApplication.getInstance().getTalkerServiceClass());
+            outIntent.setAction(PebbleTalkerService.INTENT_PEBBLE_ACK);
+            outIntent.putExtra("transactionId", transactionId);
+            context.startService(outIntent);
         }
         else if ("com.getpebble.action.app.RECEIVE_NACK".equals(intent.getAction()))
         {
-            callHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    communication.receivedNack(transactionId);
-                }
-            });
+            Intent outIntent = new Intent(context, PebbleCompanionApplication.getInstance().getTalkerServiceClass());
+            outIntent.setAction(PebbleTalkerService.INTENT_PEBBLE_NACK);
+            outIntent.putExtra("transactionId", transactionId);
+            context.startService(outIntent);
         }
 
     }
