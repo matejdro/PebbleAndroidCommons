@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.util.SparseArray;
 
@@ -34,6 +35,7 @@ public abstract class PebbleTalkerService extends TimeoutService
 
     private HandlerThread pebbleProcessorThread;
     private Handler pebbleThreadHandler;
+    private Handler mainThreadHandler;
 
     private boolean enableDeveloperConnectionRefreshing = true;
 
@@ -68,6 +70,8 @@ public abstract class PebbleTalkerService extends TimeoutService
         pebbleCommunication = new PebbleCommunication(this);
         ackNackReceiver = new AckNackReceiver(this, getPebbleThreadHandler(), pebbleCommunication);
         ackNackReceiver.register();
+
+        mainThreadHandler = new Handler(Looper.getMainLooper());
 
         super.onCreate();
     }
@@ -139,6 +143,11 @@ public abstract class PebbleTalkerService extends TimeoutService
     public PebbleCommunication getPebbleCommunication()
     {
         return pebbleCommunication;
+    }
+
+    public void runOnMainThread(Runnable runnable)
+    {
+        mainThreadHandler.post(runnable);
     }
 
     public void runOnPebbleThread(Runnable runnable)
