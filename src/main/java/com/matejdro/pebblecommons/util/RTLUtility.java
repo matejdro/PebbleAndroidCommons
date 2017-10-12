@@ -24,6 +24,8 @@ public class RTLUtility {
 	protected String heb_range = "\u05D0-\u05EA";
 	protected String arabic_range = "\u0600-\u06FF"; 
 	protected String rx_str;
+
+	private boolean enabled = true;
 	
 	private RTLUtility(){
 		rx_str = generateRegExp();
@@ -36,8 +38,16 @@ public class RTLUtility {
 		}
 		return ref;
 	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
 	
 	public boolean isRTL(String text){
+		if (!enabled) {
+			return false;
+		}
+
 		Matcher m = rtl_rx.matcher(text);
 		if (m.find()){
 			return true;
