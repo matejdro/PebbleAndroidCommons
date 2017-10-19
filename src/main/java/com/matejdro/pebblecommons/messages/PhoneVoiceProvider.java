@@ -8,6 +8,8 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -24,8 +26,7 @@ import timber.log.Timber;
 /**
  * Created by Matej on 28.9.2014.
  */
-public class PhoneVoiceProvider extends BroadcastReceiver implements RecognitionListener, MessageTextProvider
-{
+public class PhoneVoiceProvider extends BroadcastReceiver implements RecognitionListener, MessageTextProvider {
     private static final String INTENT_ACTION_VOICE_CANCEL = "com.matejdro.pebblecommon.notificationaction.PHONE_VOICE_CANCEL";
     private static final String INTENT_ACTION_VOICE_RETRY = "com.matejdro.pebblecommon.notificationaction.PHONE_VOICE_RETRY";
     private static final String INTENT_ACTION_VOICE_RESULTS = "com.matejdro.pebblecommon.notificationaction.PHONE_VOICE_RESULTS";
@@ -38,8 +39,7 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
     private boolean waitingForBluetooth;
     private Context context;
 
-    public PhoneVoiceProvider(UserPrompter userPrompter, Context context)
-    {
+    public PhoneVoiceProvider(UserPrompter userPrompter, Context context) {
         this.userPrompter = userPrompter;
         this.context = context;
 
@@ -47,29 +47,30 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
     }
 
     @Override
-    public void startRetrievingText(MessageTextProviderListener textListener)
-    {
+    public void startRetrievingText(MessageTextProviderListener textListener) {
         this.textListener = textListener;
-        startVoice();
+
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                startVoice();
+            }
+        });
     }
 
-    public void startVoice()
-    {
+    private void startVoice() {
         Timber.d("startVoice");
 
         if (waitingForBluetooth)
             return;
 
-        if (recognizer != null)
-        {
+        if (recognizer != null) {
             recognizer.stopListening();
             recognizer.destroy();
         }
 
-        if (BluetoothHeadsetListener.isHeadsetConnected(context))
-        {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_DENIED)
-            {
+        if (BluetoothHeadsetListener.isHeadsetConnected(context)) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_DENIED) {
                 sendErrorNotification(context.getString(R.string.voice_input_error_no_bluetooth_permission));
                 return;
             }
@@ -85,11 +86,8 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
             audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
             audioManager.startBluetoothSco();
             audioManager.setBluetoothScoOn(true);
-        }
-        else
-        {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_DENIED)
-            {
+        } else {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_DENIED) {
                 sendErrorNotification(context.getString(R.string.voice_input_error_no_mic_permission));
                 return;
             }
@@ -102,23 +100,20 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
     }
 
     public void stopVoice() {
-        if (recognizer != null)
-        {
+        if (recognizer != null) {
             recognizer.stopListening();
             recognizer.destroy();
         }
 
         AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-        if (audioManager.isBluetoothScoOn())
-        {
+        if (audioManager.isBluetoothScoOn()) {
             audioManager.setMode(AudioManager.MODE_NORMAL);
             audioManager.stopBluetoothSco();
             audioManager.setBluetoothScoOn(false);
         }
     }
 
-    public void startRecognizing()
-    {
+    private void startRecognizing() {
         Timber.d("startRecognizing");
 
         recognizer = SpeechRecognizer.createSpeechRecognizer(context);
@@ -132,41 +127,34 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
     }
 
     @Override
-    public void onReadyForSpeech(Bundle bundle)
-    {
+    public void onReadyForSpeech(Bundle bundle) {
     }
 
     @Override
-    public void onBeginningOfSpeech()
-    {
+    public void onBeginningOfSpeech() {
     }
 
     @Override
-    public void onRmsChanged(float v)
-    {
-
-    }
-
-    @Override
-    public void onBufferReceived(byte[] bytes)
-    {
+    public void onRmsChanged(float v) {
 
     }
 
     @Override
-    public void onEndOfSpeech()
-    {
+    public void onBufferReceived(byte[] bytes) {
+
     }
 
     @Override
-    public void onError(int i)
-    {
+    public void onEndOfSpeech() {
+    }
+
+    @Override
+    public void onError(int i) {
         Timber.d("voiceError %d", i);
 
         stopVoice();
 
-        switch (i)
-        {
+        switch (i) {
             case SpeechRecognizer.ERROR_NETWORK:
             case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
                 sendErrorNotification(context.getString(R.string.voiceErrorNoInternet));
@@ -182,8 +170,7 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
     }
 
     @Override
-    public void onResults(Bundle bundle)
-    {
+    public void onResults(Bundle bundle) {
         stopVoice();
 
         ArrayList<String> matches = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
@@ -191,15 +178,13 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
 
         Timber.d("voiceResults %d", size);
 
-        if (size == 0)
-        {
+        if (size == 0) {
             sendErrorNotification(context.getString(R.string.voiceErrorNoSpeech));
             return;
         }
 
         String resultsText = "";
-        for (int i = 0; i < size; i++)
-        {
+        for (int i = 0; i < size; i++) {
             resultsText = resultsText.concat(context.getString((R.string.voiceInputResultTitle), i + 1));
             resultsText = resultsText.concat(matches.get(i));
             if (i != size - 1)
@@ -207,8 +192,7 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
         }
 
         UserPrompter.PromptAnswer[] answers = new UserPrompter.PromptAnswer[size + 2];
-        for (int i = 0; i < size; i++)
-        {
+        for (int i = 0; i < size; i++) {
             Intent answerIntent = new Intent(INTENT_ACTION_VOICE_RESULTS);
             answerIntent.putExtra(INTENT_EXTRA_RESULT_TEXT, matches.get(i));
 
@@ -227,34 +211,30 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
     }
 
     @Override
-    public void onPartialResults(Bundle bundle)
-    {
+    public void onPartialResults(Bundle bundle) {
 
     }
 
     @Override
-    public void onEvent(int i, Bundle bundle)
-    {
+    public void onEvent(int i, Bundle bundle) {
 
     }
 
-    private void sendErrorNotification(String error)
-    {
+    private void sendErrorNotification(String error) {
 
         String title = context.getString(R.string.voiceInputNotificationTitle);
         String subtitle = context.getString(R.string.voiceInputErrorNotificationSubtitle);
         String body = context.getString(R.string.voiceInputErrorNotificationText, error);
 
         userPrompter.promptUser(title, subtitle, body,
-                                new UserPrompter.PromptAnswer("Retry", new Intent(INTENT_ACTION_VOICE_RETRY)),
+                new UserPrompter.PromptAnswer("Retry", new Intent(INTENT_ACTION_VOICE_RETRY)),
                 new UserPrompter.PromptAnswer("Cancel", new Intent(INTENT_ACTION_VOICE_CANCEL)));
 
         context.registerReceiver(this, new IntentFilter(INTENT_ACTION_VOICE_RETRY));
         context.registerReceiver(this, new IntentFilter(INTENT_ACTION_VOICE_CANCEL));
     }
 
-    private void sendStatusNotification(String body)
-    {
+    private void sendStatusNotification(String body) {
         String title = context.getString(R.string.voiceInputNotificationTitle);
 
         userPrompter.promptUser(title, null, body,
@@ -264,38 +244,27 @@ public class PhoneVoiceProvider extends BroadcastReceiver implements Recognition
     }
 
     @Override
-    public void onReceive(Context context, Intent intent)
-    {
+    public void onReceive(Context context, Intent intent) {
 
-        if (INTENT_ACTION_VOICE_CANCEL.equals(intent.getAction()))
-        {
+        if (INTENT_ACTION_VOICE_CANCEL.equals(intent.getAction())) {
             stopVoice();
-        }
-        else if (INTENT_ACTION_VOICE_RETRY.equals(intent.getAction()))
-        {
+        } else if (INTENT_ACTION_VOICE_RETRY.equals(intent.getAction())) {
             startVoice();
-        }
-        else if (INTENT_ACTION_VOICE_RESULTS.equals(intent.getAction()))
-        {
+        } else if (INTENT_ACTION_VOICE_RESULTS.equals(intent.getAction())) {
             String text = intent.getStringExtra(INTENT_EXTRA_RESULT_TEXT);
             textListener.gotText(text);
-        }
-        else
-        {
+        } else {
             return;
         }
 
         context.unregisterReceiver(this);
     }
 
-    private class BluetoothAudioListener extends BroadcastReceiver
-    {
+    private class BluetoothAudioListener extends BroadcastReceiver {
         @Override
-        public void onReceive(Context context, Intent intent)
-        {
+        public void onReceive(Context context, Intent intent) {
             int state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, AudioManager.SCO_AUDIO_STATE_DISCONNECTED);
-            if (state == AudioManager.SCO_AUDIO_STATE_CONNECTED)
-            {
+            if (state == AudioManager.SCO_AUDIO_STATE_CONNECTED) {
                 startRecognizing();
                 context.unregisterReceiver(this);
                 sendStatusNotification(context.getString(R.string.voiceInputSpeakNow));
