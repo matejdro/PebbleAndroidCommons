@@ -6,16 +6,51 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.net.Uri;
 import android.util.Base64;
 import android.util.Log;
-import com.getpebble.android.kit.Constants.*;
+
+import com.getpebble.android.kit.Constants.PebbleAppType;
+import com.getpebble.android.kit.Constants.PebbleDataType;
 import com.getpebble.android.kit.util.PebbleDictionary;
+
 import org.json.JSONException;
 
 import java.util.UUID;
 
-import static com.getpebble.android.kit.Constants.*;
+import static com.getpebble.android.kit.Constants.APP_UUID;
+import static com.getpebble.android.kit.Constants.CUST_APP_TYPE;
+import static com.getpebble.android.kit.Constants.CUST_ICON;
+import static com.getpebble.android.kit.Constants.CUST_NAME;
+import static com.getpebble.android.kit.Constants.DATA_LOG_TAG;
+import static com.getpebble.android.kit.Constants.DATA_LOG_TIMESTAMP;
+import static com.getpebble.android.kit.Constants.DATA_LOG_UUID;
+import static com.getpebble.android.kit.Constants.INTENT_APP_ACK;
+import static com.getpebble.android.kit.Constants.INTENT_APP_CUSTOMIZE;
+import static com.getpebble.android.kit.Constants.INTENT_APP_NACK;
+import static com.getpebble.android.kit.Constants.INTENT_APP_RECEIVE;
+import static com.getpebble.android.kit.Constants.INTENT_APP_RECEIVE_ACK;
+import static com.getpebble.android.kit.Constants.INTENT_APP_RECEIVE_NACK;
+import static com.getpebble.android.kit.Constants.INTENT_APP_SEND;
+import static com.getpebble.android.kit.Constants.INTENT_APP_START;
+import static com.getpebble.android.kit.Constants.INTENT_APP_STOP;
+import static com.getpebble.android.kit.Constants.INTENT_DL_ACK_DATA;
+import static com.getpebble.android.kit.Constants.INTENT_DL_FINISH_SESSION;
+import static com.getpebble.android.kit.Constants.INTENT_DL_RECEIVE_DATA;
+import static com.getpebble.android.kit.Constants.INTENT_DL_REQUEST_DATA;
+import static com.getpebble.android.kit.Constants.INTENT_PEBBLE_CONNECTED;
+import static com.getpebble.android.kit.Constants.INTENT_PEBBLE_DISCONNECTED;
+import static com.getpebble.android.kit.Constants.KIT_STATE_COLUMN_APPMSG_SUPPORT;
+import static com.getpebble.android.kit.Constants.KIT_STATE_COLUMN_CONNECTED;
+import static com.getpebble.android.kit.Constants.KIT_STATE_COLUMN_DATALOGGING_SUPPORT;
+import static com.getpebble.android.kit.Constants.KIT_STATE_COLUMN_VERSION_MAJOR;
+import static com.getpebble.android.kit.Constants.KIT_STATE_COLUMN_VERSION_MINOR;
+import static com.getpebble.android.kit.Constants.KIT_STATE_COLUMN_VERSION_POINT;
+import static com.getpebble.android.kit.Constants.KIT_STATE_COLUMN_VERSION_TAG;
+import static com.getpebble.android.kit.Constants.MSG_DATA;
+import static com.getpebble.android.kit.Constants.PBL_DATA_ID;
+import static com.getpebble.android.kit.Constants.PBL_DATA_OBJECT;
+import static com.getpebble.android.kit.Constants.PBL_DATA_TYPE;
+import static com.getpebble.android.kit.Constants.TRANSACTION_ID;
 
 /**
  * A helper class providing methods for interacting with third-party Pebble Smartwatch applications. Pebble-enabled
@@ -96,18 +131,18 @@ public final class PebbleKit {
      *         false if the Pebble application is not installed on the user's handset.
      */
     public static boolean isWatchConnected(final Context context) {
-		Cursor c = null;
-		try {
+        Cursor c = null;
+        try {
             c = queryProvider(context);
-			if (c == null || !c.moveToNext()) {
-				return false;
-			}
-			return c.getInt(KIT_STATE_COLUMN_CONNECTED) == 1;
-		} finally {
-			if (c != null) {
-				c.close();
-			}
-		}
+            if (c == null || !c.moveToNext()) {
+                return false;
+            }
+            return c.getInt(KIT_STATE_COLUMN_CONNECTED) == 1;
+        } finally {
+            if (c != null) {
+                c.close();
+            }
+        }
     }
 
     /**
@@ -124,20 +159,20 @@ public final class PebbleKit {
      */
     public static boolean areAppMessagesSupported(final Context context) {
         Cursor c = null;
-		try {
+        try {
             c = queryProvider(context);
-			if (c == null || !c.moveToNext()) {
-				return false;
-			}
-			return c.getInt(KIT_STATE_COLUMN_APPMSG_SUPPORT) == 1;
-		} finally {
-			if (c != null) {
-				c.close();
-			}
-		}
+            if (c == null || !c.moveToNext()) {
+                return false;
+            }
+            return c.getInt(KIT_STATE_COLUMN_APPMSG_SUPPORT) == 1;
+        } finally {
+            if (c != null) {
+                c.close();
+            }
+        }
     }
 
-    
+
     /**
      * Get the version information of the firmware running on a connected watch.
      *
@@ -151,23 +186,23 @@ public final class PebbleKit {
      */
     public static FirmwareVersionInfo getWatchFWVersion(final Context context) {
         Cursor c = null;
-		try {
+        try {
             c = queryProvider(context);
-			if (c == null || !c.moveToNext()) {
-				return null;
-			}
-			
-			int majorVersion = c.getInt(KIT_STATE_COLUMN_VERSION_MAJOR);
-			int minorVersion = c.getInt(KIT_STATE_COLUMN_VERSION_MINOR);
-			int pointVersion = c.getInt(KIT_STATE_COLUMN_VERSION_POINT);
-			String versionTag = c.getString(KIT_STATE_COLUMN_VERSION_TAG);
-			
-			return new FirmwareVersionInfo(majorVersion, minorVersion, pointVersion, versionTag);
-		} finally {
-			if (c != null) {
-				c.close();
-			}
-		}
+            if (c == null || !c.moveToNext()) {
+                return null;
+            }
+
+            int majorVersion = c.getInt(KIT_STATE_COLUMN_VERSION_MAJOR);
+            int minorVersion = c.getInt(KIT_STATE_COLUMN_VERSION_MINOR);
+            int pointVersion = c.getInt(KIT_STATE_COLUMN_VERSION_POINT);
+            String versionTag = c.getString(KIT_STATE_COLUMN_VERSION_TAG);
+
+            return new FirmwareVersionInfo(majorVersion, minorVersion, pointVersion, versionTag);
+        } finally {
+            if (c != null) {
+                c.close();
+            }
+        }
     }
 
     /**
@@ -184,17 +219,17 @@ public final class PebbleKit {
      */
     public static boolean isDataLoggingSupported(final Context context) {
         Cursor c = null;
-		try {
+        try {
             c = queryProvider(context);
-			if (c == null || !c.moveToNext()) {
-				return false;
-			}
-			return c.getInt(KIT_STATE_COLUMN_DATALOGGING_SUPPORT) == 1;
-		} finally {
-			if (c != null) {
-				c.close();
-			}
-		}
+            if (c == null || !c.moveToNext()) {
+                return false;
+            }
+            return c.getInt(KIT_STATE_COLUMN_DATALOGGING_SUPPORT) == 1;
+        } finally {
+            if (c != null) {
+                c.close();
+            }
+        }
     }
 
     /**
@@ -237,6 +272,19 @@ public final class PebbleKit {
      */
     public static void closeAppOnPebble(final Context context, final UUID watchappUuid)
             throws IllegalArgumentException {
+        closeAppOnPebble(context, watchappUuid, false);
+    }
+
+    /**
+     * Close app on Pebble with request to reopen last app before current app was opened.
+     *
+     * Request is extended API offered by Gadget Bridge
+     *
+     * @see #closeAppOnPebble(Context, UUID)
+     */
+    public static void closeAppOnPebble(final Context context, final UUID watchappUuid,
+                                        boolean reopenLastApp)
+            throws IllegalArgumentException {
 
         if (watchappUuid == null) {
             throw new IllegalArgumentException("uuid cannot be null");
@@ -244,8 +292,10 @@ public final class PebbleKit {
 
         final Intent stopAppIntent = new Intent(INTENT_APP_STOP);
         stopAppIntent.putExtra(APP_UUID, watchappUuid);
+        stopAppIntent.putExtra("com.getpebble.action.app.REOPEN_LAST_APP", reopenLastApp);
         context.sendBroadcast(stopAppIntent);
     }
+
 
     /**
      * Send one-or-more key-value pairs to the watch-app identified by the provided UUID. This is the primary method for
@@ -896,32 +946,32 @@ public final class PebbleKit {
         requestIntent.putExtra(APP_UUID, appUuid);
         context.sendBroadcast(requestIntent);
     }
-    
+
     public static class FirmwareVersionInfo {
         private final int major;
         private final int minor;
         private final int point;
         private final String tag;
-        
+
         FirmwareVersionInfo(int major, int minor, int point, String tag) {
             this.major = major;
             this.minor = minor;
             this.point = point;
             this.tag = tag;
         }
-        
+
         public final int getMajor() {
             return major;
         }
-        
+
         public final int getMinor() {
             return minor;
         }
-        
+
         public final int getPoint() {
             return point;
         }
-        
+
         public final String getTag() {
             return tag;
         }
@@ -939,7 +989,7 @@ public final class PebbleKit {
             if (c.moveToFirst()) {
                 // If Basalt app is connected, talk to that (return the open cursor)
                 if (c.getInt(KIT_STATE_COLUMN_CONNECTED) == 1) {
-                	c.moveToPrevious();
+                    c.moveToPrevious();
                     return c;
                 }
             }
